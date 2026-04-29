@@ -1,50 +1,45 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+  }
+
   try {
     const supabase = createRouteHandlerClient({ cookies });
-
-    // Obter sessão
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    console.log('DEBUG - Session:', session);
-    console.log('DEBUG - Session Error:', sessionError);
 
     if (!session) {
       return NextResponse.json({
         logado: false,
         mensagem: 'Nenhuma sessão encontrada',
-        cookies: request.headers.get('cookie')
       });
     }
 
-    // Obter perfil
     const { data: perfil, error: perfilError } = await supabase
       .from('perfis')
       .select('tipo')
       .eq('id', session.user.id)
       .single();
 
-    console.log('DEBUG - Perfil:', perfil);
-    console.log('DEBUG - Perfil Error:', perfilError);
-
     return NextResponse.json({
       logado: true,
       usuario: {
         id: session.user.id,
-        email: session.user.email
+        email: session.user.email,
       },
-      perfil: perfil,
+      perfil,
       perfilError: perfilError?.message,
-      sessaoCompleta: session
+      sessionError: sessionError?.message,
     });
   } catch (error: any) {
-    console.error('DEBUG - Erro:', error);
     return NextResponse.json({
       erro: true,
-      mensagem: error.message
+      mensagem: error.message,
     });
   }
 }

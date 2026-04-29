@@ -18,3 +18,5 @@ next-env.d.ts
 .idea/
 .vscode/
 *.log
+
+.vercel

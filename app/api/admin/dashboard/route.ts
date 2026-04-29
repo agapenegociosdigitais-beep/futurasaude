@@ -1,42 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { message: 'Token inválido' },
-        { status: 401 }
-      );
-    }
-
-    // Verificar se é admin
-    const { data: perfil } = await supabaseAdmin
-      .from('perfis')
-      .select('tipo')
-      .eq('id', user.id)
-      .single();
-
-    if (perfil?.tipo !== 'admin') {
-      return NextResponse.json(
-        { message: 'Sem permissão' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
 
     // Contar beneficiários ativos
     const { count: beneficiarios } = await supabaseAdmin

@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
-
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
 
     let query = supabaseAdmin.from('beneficiarios').select('*');
 

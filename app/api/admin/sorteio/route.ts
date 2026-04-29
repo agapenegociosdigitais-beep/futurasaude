@@ -1,31 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
     const body = await request.json();
-
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { message: 'Token inválido' },
-        { status: 401 }
-      );
-    }
-
     const { num_ganhadores, premio } = body;
 
     // Obter beneficiários ativos
@@ -65,7 +48,7 @@ export async function POST(request: NextRequest) {
     const { data: sorteio, error: sorteioError } = await supabaseAdmin
       .from('sorteios')
       .insert({
-        realizado_por: user.id,
+        realizado_por: auth.userId,
         total_participantes: beneficiarios.length,
         ganhadores: ganhadores.map((g) => ({
           id: g.id,
@@ -95,14 +78,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
 
     const { data, error } = await supabaseAdmin
       .from('sorteios')

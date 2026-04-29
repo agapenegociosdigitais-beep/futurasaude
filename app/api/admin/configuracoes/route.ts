@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
 
     const { data, error } = await supabaseAdmin
       .from('configuracoes')
@@ -34,16 +29,10 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
     const body = await request.json();
-
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
-
     const { chave, valor } = body;
 
     if (!chave || !valor) {

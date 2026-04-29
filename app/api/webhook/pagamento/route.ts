@@ -1,20 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import crypto from 'crypto';
+import { timingSafeEqual } from 'crypto';
+
+function verifyWebhookToken(received: string | null): boolean {
+  const expected = process.env.ASAAS_WEBHOOK_TOKEN;
+  if (!expected || !received) return false;
+
+  const a = Buffer.from(received);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+
+  return timingSafeEqual(a, b);
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const signature = request.headers.get('x-webhook-signature');
+    const receivedToken = request.headers.get('asaas-access-token');
 
-    // Verificar assinatura (placeholder)
-    if (!signature) {
+    if (!verifyWebhookToken(receivedToken)) {
       return NextResponse.json(
         { message: 'Assinatura inválida' },
         { status: 401 }
       );
     }
 
+    const body = await request.json();
     const { gateway_id, status, beneficiario_id } = body;
 
     if (!gateway_id || !status || !beneficiario_id) {
@@ -24,7 +34,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Atualizar pagamento
     const { error: paymentError } = await supabaseAdmin
       .from('pagamentos')
       .update({
@@ -40,7 +49,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Se pagamento foi confirmado, ativar beneficiário
     if (status === 'pago') {
       const { error: benefError } = await supabaseAdmin
         .from('beneficiarios')

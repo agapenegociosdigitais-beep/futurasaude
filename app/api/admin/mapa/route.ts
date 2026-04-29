@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
 
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
-
-    // Obter beneficiários com geolocalização
     const { data, error } = await supabaseAdmin
       .from('perfis')
       .select('cidade, bairro, lat, lng')
