@@ -1,0 +1,116 @@
+{
+    "scope": "https:\/\/www.perolanegra.vip\/",
+    "name": "F\u00f3rum | P\u00e9rola Negra",
+    "theme_color": "#181818",
+    "cache_key": 1710270389,
+    "icons": [
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-36x36.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "36x36",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-48x48.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "48x48",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-72x72.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "72x72",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-96x96.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "96x96",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-144x144.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "144x144",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-192x192.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "192x192",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-256x256.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "256x256",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-384x384.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "384x384",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-512x512.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "512x512",
+            "purpose": "any"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-36x36-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "36x36",
+            "purpose": "maskable"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-48x48-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "48x48",
+            "purpose": "maskable"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-72x72-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "72x72",
+            "purpose": "maskable"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-96x96-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "96x96",
+            "purpose": "maskable"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-144x144-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "144x144",
+            "purpose": "maskable"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-192x192-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "192x192",
+            "purpose": "maskable"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-256x256-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "256x256",
+            "purpose": "maskable"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-384x384-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "384x384",
+            "purpose": "maskable"
+        },
+        {
+            "src": "\/\/media.invisioncic.com\/t329290\/monthly_2024_01\/android-chrome-512x512-masked.png?v=1710270389",
+            "type": "image\/png",
+            "sizes": "512x512",
+            "purpose": "maskable"
+        }
+    ]
+}
