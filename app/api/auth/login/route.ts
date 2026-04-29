@@ -39,10 +39,12 @@ export async function POST(request: Request) {
       { status: 200 }
     );
 
-    // Cookie NÃO httpOnly para funcionar com HTML estático
+    // TODO security: refatorar HTML estatico para usar cookie auth via /api/auth/session
+    // e tornar tokens httpOnly (mitigacao XSS).
+    const isProd = process.env.NODE_ENV === 'production';
     response.cookies.set('sb-access-token', data.session.access_token, {
       httpOnly: false,
-      secure: false,
+      secure: isProd,
       sameSite: 'lax',
       maxAge: 3600,
       path: '/'
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
 
     response.cookies.set('sb-refresh-token', data.session.refresh_token, {
       httpOnly: false,
-      secure: false,
+      secure: isProd,
       sameSite: 'lax',
       maxAge: 86400 * 30,
       path: '/'
