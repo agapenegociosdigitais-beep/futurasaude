@@ -27,13 +27,20 @@ export default function DashboardPage() {
       return;
     }
 
-    // Carregar foto salva do servidor
+    // Carregar foto — primeiro do localStorage (instantâneo)
+    const fotoSalva = localStorage.getItem('fs-foto-url');
+    if (fotoSalva) setFotoUrl(fotoSalva);
+
+    // Depois tenta atualizar do servidor
     fetch('/api/beneficiario/foto', {
       headers: { Authorization: `Bearer ${activeToken}` }
     })
       .then(res => res.json())
       .then(data => {
-        if (data.url) setFotoUrl(data.url);
+        if (data.url) {
+          setFotoUrl(data.url);
+          localStorage.setItem('fs-foto-url', data.url);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -77,12 +84,16 @@ export default function DashboardPage() {
 
       if (res.ok && data.url) {
         setFotoUrl(data.url);
-        alert('✅ Foto salva com sucesso! Ela aparecerá sempre que você entrar.');
+        localStorage.setItem('fs-foto-url', data.url);
+        alert('✅ Foto salva com sucesso!');
       } else {
-        alert('⚠️ Foto aplicada localmente. Faça login novamente para salvar permanentemente.');
+        // Salvar URL local como fallback
+        localStorage.setItem('fs-foto-url', localUrl);
+        alert('⚠️ Foto salva localmente. Reconecte para sincronizar.');
       }
     } catch {
-      alert('⚠️ Foto aplicada localmente. Verifique sua conexão.');
+      localStorage.setItem('fs-foto-url', localUrl);
+      alert('⚠️ Foto salva localmente.');
     } finally {
       setUploadingFoto(false);
     }
@@ -381,6 +392,7 @@ export default function DashboardPage() {
           <button className="btn-sair" onClick={() => {
             localStorage.removeItem('sb-access-token');
             localStorage.removeItem('sb-refresh-token');
+            localStorage.removeItem('fs-foto-url');
             document.cookie = 'sb-access-token=; max-age=0; path=/';
             document.cookie = 'sb-refresh-token=; max-age=0; path=/';
             window.location.href = '/login';
