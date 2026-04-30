@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const [currentPage, setCurrentPage] = useState('inicio');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
@@ -302,17 +302,28 @@ export default function DashboardPage() {
         .btn-sair:hover { color: #ff7070; }
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
         @media(max-width:768px) {
-          .sidebar { transform: translateX(-100%); }
+          .sidebar { transform: translateX(-100%); width: 260px; }
           .sidebar.aberta { transform: translateX(0); }
+          .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
           .sidebar-overlay.ativo { display: block; }
-          .main { margin-left: 0; }
-          .content { padding: 16px; }
-          .stats-grid { grid-template-columns: 1fr 1fr; }
+          .main { margin-left: 0 !important; }
+          .content { padding: 12px; }
+          .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+          .carteirinha-nova { max-width: 100% !important; }
+          .cn-body { grid-template-columns: 110px 1fr; gap: 14px; }
+          .cn-foto { width: 100px !important; height: 100px !important; font-size: 38px !important; }
+          .cn-logo-nome { font-size: 22px !important; }
+          .cn-campo-val { font-size: 15px !important; }
+          .cn-footer-nome { font-size: 20px !important; }
+          .topbar { padding: 12px 16px; }
+          .card { padding: 16px; }
+          .stat-card { padding: 14px; }
+          .stat-val { font-size: 18px; }
         }
       `}</style>
 
       <div
-        className={`sidebar-overlay ${sidebarOpen ? '' : ''}`}
+        className={`sidebar-overlay ${sidebarOpen ? 'ativo' : ''}`}
         onClick={() => setSidebarOpen(false)}
       />
 
