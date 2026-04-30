@@ -51,8 +51,9 @@ export default function DashboardPage() {
 
   }, [router]);
 
-  // Helpers para dados reais
-  const nomeExibir = beneficiario?.nome_completo || localStorage.getItem('usuario_nome') || 'Beneficiário';
+  // Helpers para dados reais — sem localStorage direto (SSR safe)
+  const nomeStorage = typeof window !== 'undefined' ? localStorage.getItem('usuario_nome') : '';
+  const nomeExibir = beneficiario?.nome_completo || nomeStorage || 'Beneficiário';
   const primeiroNome = nomeExibir.split(' ')[0];
   const numeroCartao = beneficiario?.numero_cartao || 'FS-2025-00001';
   const cpfExibir = beneficiario?.cpf
@@ -88,7 +89,7 @@ export default function DashboardPage() {
     setUploadingFoto(true);
 
     try {
-      const token = localStorage.getItem('sb-access-token') ||
+      const token = (typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : '') ||
         document.cookie.split(';').find(c => c.trim().startsWith('sb-access-token='))?.split('=')[1] || '';
 
       const formData = new FormData();
@@ -410,9 +411,11 @@ export default function DashboardPage() {
         </nav>
         <div style={{ padding: '14px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           <button className="btn-sair" onClick={() => {
-            localStorage.removeItem('sb-access-token');
-            localStorage.removeItem('sb-refresh-token');
-            localStorage.removeItem('fs-foto-url');
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('sb-access-token');
+              localStorage.removeItem('sb-refresh-token');
+              localStorage.removeItem('fs-foto-url');
+            }
             document.cookie = 'sb-access-token=; max-age=0; path=/';
             document.cookie = 'sb-refresh-token=; max-age=0; path=/';
             window.location.href = '/login';

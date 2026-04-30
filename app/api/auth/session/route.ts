@@ -1,32 +1,31 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
 
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    console.log('Session check:', { session: !!session, error });
-
-    if (!session) {
-      return NextResponse.json(
-        { message: 'Não autenticado', logado: false },
-        { status: 401 }
-      );
+    if (!token) {
+      return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    return NextResponse.json(
-      { session, logado: true },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('Session error:', error);
-    return NextResponse.json(
-      { message: 'Erro ao verificar sessão' },
-      { status: 500 }
-    );
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+    if (error || !user) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
+
+    return NextResponse.json({ user: { id: user.id, email: user.email } });
+
+  } catch {
+    return NextResponse.json({ user: null }, { status: 500 });
   }
 }
