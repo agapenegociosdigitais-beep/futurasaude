@@ -14,34 +14,56 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Verificar token no cookie ou localStorage
     const token = localStorage.getItem('sb-access-token');
     const cookieToken = document.cookie
       .split(';')
       .find(c => c.trim().startsWith('sb-access-token='))
       ?.split('=')[1];
 
-    if (!token && !cookieToken) {
+    const activeToken = token || cookieToken;
+
+    if (!activeToken) {
       router.replace('/login');
       return;
     }
-    setLoading(false);
+
+    // Carregar foto salva do servidor
+    fetch('/api/beneficiario/foto', {
+      headers: { Authorization: `Bearer ${activeToken}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.url) setFotoUrl(data.url);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+
   }, [router]);
 
-  // Upload de foto
+  // Upload de foto — salva no Supabase Storage
   const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tamanho (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       alert('Foto muito grande. Máximo 2MB.');
       return;
     }
 
+    if (!file.type.startsWith('image/')) {
+      alert('Envie apenas imagens (JPG, PNG, etc).');
+      return;
+    }
+
+    // Mostrar preview imediato
+    const localUrl = URL.createObjectURL(file);
+    setFotoUrl(localUrl);
     setUploadingFoto(true);
+
     try {
-      const token = localStorage.getItem('sb-access-token');
+      const token = localStorage.getItem('sb-access-token') ||
+        document.cookie.split(';').find(c => c.trim().startsWith('sb-access-token='))?.split('=')[1] || '';
+
       const formData = new FormData();
       formData.append('foto', file);
 
@@ -51,20 +73,16 @@ export default function DashboardPage() {
         body: formData,
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json();
+
+      if (res.ok && data.url) {
         setFotoUrl(data.url);
-        alert('✅ Foto atualizada com sucesso!');
+        alert('✅ Foto salva com sucesso! Ela aparecerá sempre que você entrar.');
       } else {
-        // Fallback: mostrar localmente mesmo sem salvar no servidor
-        const localUrl = URL.createObjectURL(file);
-        setFotoUrl(localUrl);
-        alert('✅ Foto adicionada!');
+        alert('⚠️ Foto aplicada localmente. Faça login novamente para salvar permanentemente.');
       }
     } catch {
-      // Fallback local
-      const localUrl = URL.createObjectURL(file);
-      setFotoUrl(localUrl);
+      alert('⚠️ Foto aplicada localmente. Verifique sua conexão.');
     } finally {
       setUploadingFoto(false);
     }
