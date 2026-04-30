@@ -1,97 +1,46 @@
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
 
     if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
     }
 
-    // Verificar token e obter user_id
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { message: 'Token inválido' },
-        { status: 401 }
-      );
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) {
+      return NextResponse.json({ message: 'Token inválido' }, { status: 401 });
     }
 
-    // Obter perfil
-    const { data: perfil, error } = await supabaseAdmin
+    // Buscar perfil do responsável
+    const { data: perfil } = await supabaseAdmin
       .from('perfis')
       .select('*')
       .eq('id', user.id)
       .single();
 
-    if (error) {
-      return NextResponse.json(
-        { message: 'Perfil não encontrado' },
-        { status: 404 }
-      );
-    }
+    // Buscar beneficiário vinculado
+    const { data: beneficiario } = await supabaseAdmin
+      .from('beneficiarios')
+      .select('*')
+      .eq('responsavel_id', user.id)
+      .single();
 
-    return NextResponse.json(perfil, { status: 200 });
+    return NextResponse.json({
+      perfil,
+      beneficiario,
+      message: 'Dados carregados com sucesso'
+    });
+
   } catch (error) {
-    return NextResponse.json(
-      { message: 'Erro interno do servidor' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    const body = await request.json();
-
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Token não fornecido' },
-        { status: 401 }
-      );
-    }
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { message: 'Token inválido' },
-        { status: 401 }
-      );
-    }
-
-    const { error } = await supabaseAdmin
-      .from('perfis')
-      .update(body)
-      .eq('id', user.id);
-
-    if (error) {
-      return NextResponse.json(
-        { message: 'Erro ao atualizar perfil' },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: 'Perfil atualizado com sucesso' },
-      { status: 200 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { message: 'Erro interno do servidor' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Erro interno' }, { status: 500 });
   }
 }

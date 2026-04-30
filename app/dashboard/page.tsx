@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [beneficiario, setBeneficiario] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -31,21 +32,40 @@ export default function DashboardPage() {
     const fotoSalva = localStorage.getItem('fs-foto-url');
     if (fotoSalva) setFotoUrl(fotoSalva);
 
-    // Depois tenta atualizar do servidor
-    fetch('/api/beneficiario/foto', {
+    // Buscar dados reais do beneficiário
+    fetch('/api/beneficiario/perfil', {
       headers: { Authorization: `Bearer ${activeToken}` }
     })
       .then(res => res.json())
       .then(data => {
-        if (data.url) {
-          setFotoUrl(data.url);
-          localStorage.setItem('fs-foto-url', data.url);
+        if (data.beneficiario) {
+          setBeneficiario(data.beneficiario);
+          if (data.beneficiario.foto_url) {
+            setFotoUrl(data.beneficiario.foto_url);
+            localStorage.setItem('fs-foto-url', data.beneficiario.foto_url);
+          }
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
 
   }, [router]);
+
+  // Helpers para dados reais
+  const nomeExibir = beneficiario?.nome_completo || localStorage.getItem('usuario_nome') || 'Beneficiário';
+  const primeiroNome = nomeExibir.split(' ')[0];
+  const numeroCartao = beneficiario?.numero_cartao || 'FS-2025-00001';
+  const cpfExibir = beneficiario?.cpf
+    ? beneficiario.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+    : '000.000.000-00';
+  const nascimento = beneficiario?.data_nascimento
+    ? new Date(beneficiario.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR')
+    : '--/--/----';
+  const validadeCartao = beneficiario?.plano_fim
+    ? new Date(beneficiario.plano_fim + 'T00:00:00').toLocaleDateString('pt-BR')
+    : 'Pendente';
+  const statusPlano = beneficiario?.status === 'ativo' ? 'ATIVO' : 'PENDENTE';
+  const cidadeBen = beneficiario?.cidade || 'Santarém — PA';
 
   // Upload de foto — salva no Supabase Storage
   const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,7 +199,7 @@ export default function DashboardPage() {
                 <div class="row">
                   <div class="campo">
                     <div class="campo-label">Data de Nascimento:</div>
-                    <div class="campo-val">15/03/2007</div>
+                    <div class="campo-val">{nascimento}</div>
                   </div>
                   <div class="campo">
                     <div class="campo-label">Validade:</div>
@@ -190,8 +210,8 @@ export default function DashboardPage() {
             </div>
             <div class="footer">
               <div class="footer-tipo">Beneficiário</div>
-              <div class="footer-nome">Pedro Carlos Silva</div>
-              <div class="footer-num">FS-2025-00042 · ATIVO ✓ · Santarém — PA</div>
+              <div class="footer-nome">{nomeExibir}</div>
+              <div class="footer-num">{numeroCartao} · ATIVO ✓ · Santarém — PA</div>
             </div>
           </div>
         </body>
@@ -364,7 +384,7 @@ export default function DashboardPage() {
         <div className="sidebar-user">
           <div className="avatar">B</div>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: 'white' }}>Beneficiário</div>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: 'white' }}>{primeiroNome}</div>
             <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Plano ativo</div>
           </div>
         </div>
@@ -425,7 +445,7 @@ export default function DashboardPage() {
               <div className="stats-grid">
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: '#faeeda' }}>🎓</div>
-                  <div><div className="stat-val">Pedro</div><div className="stat-label">Beneficiário</div></div>
+                  <div><div className="stat-val">{primeiroNome}</div><div className="stat-label">Beneficiário</div></div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: '#e8f5ee' }}>🦷</div>
@@ -437,7 +457,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: '#eeedfe' }}>📅</div>
-                  <div><div className="stat-val">Jun/2026</div><div className="stat-label">Válido até</div></div>
+                  <div><div className="stat-val" style={{fontSize:'14px'}}>{validadeCartao}</div><div className="stat-label">Válido até</div></div>
                 </div>
               </div>
 
@@ -460,24 +480,24 @@ export default function DashboardPage() {
                   <div className="cn-campos">
                     <div className="cn-campo">
                       <div className="cn-campo-label">CPF:</div>
-                      <div className="cn-campo-val">456.789.123-00</div>
+                      <div className="cn-campo-val">{cpfExibir}</div>
                     </div>
                     <div className="cn-campos-row">
                       <div className="cn-campo">
                         <div className="cn-campo-label">Data de Nascimento:</div>
-                        <div className="cn-campo-val">15/03/2007</div>
+                        <div className="cn-campo-val">{nascimento}</div>
                       </div>
                       <div className="cn-campo">
                         <div className="cn-campo-label">Validade:</div>
-                        <div className="cn-campo-val" style={{ color: '#f5c842' }}>15/06/2026</div>
+                        <div className="cn-campo-val" style={{ color: '#f5c842' }}>{validadeCartao}</div>
                       </div>
                     </div>
                   </div>
                 </div>
                 <div className="cn-footer-bar">
                   <div className="cn-footer-tipo">Beneficiário</div>
-                  <div className="cn-footer-nome">Pedro Carlos Silva</div>
-                  <div className="cn-numero-bar">FS-2025-00042 · ATIVO ✓ · Santarém — PA</div>
+                  <div className="cn-footer-nome">{nomeExibir.toUpperCase()}</div>
+                  <div className="cn-numero-bar">{numeroCartao} · {statusPlano} · {cidadeBen}</div>
                 </div>
               </div>
                 <button className="btn-download" onClick={() => setCurrentPage('carteirinha')}>
@@ -508,24 +528,24 @@ export default function DashboardPage() {
                   <div className="cn-campos">
                     <div className="cn-campo">
                       <div className="cn-campo-label">CPF:</div>
-                      <div className="cn-campo-val">456.789.123-00</div>
+                      <div className="cn-campo-val">{cpfExibir}</div>
                     </div>
                     <div className="cn-campos-row">
                       <div className="cn-campo">
                         <div className="cn-campo-label">Data de Nascimento:</div>
-                        <div className="cn-campo-val">15/03/2007</div>
+                        <div className="cn-campo-val">{nascimento}</div>
                       </div>
                       <div className="cn-campo">
                         <div className="cn-campo-label">Validade:</div>
-                        <div className="cn-campo-val" style={{ color: '#f5c842' }}>15/06/2026</div>
+                        <div className="cn-campo-val" style={{ color: '#f5c842' }}>{validadeCartao}</div>
                       </div>
                     </div>
                   </div>
                 </div>
                 <div className="cn-footer-bar">
                   <div className="cn-footer-tipo">Beneficiário</div>
-                  <div className="cn-footer-nome">Pedro Carlos Silva</div>
-                  <div className="cn-numero-bar">FS-2025-00042 · ATIVO ✓ · Santarém — PA</div>
+                  <div className="cn-footer-nome">{nomeExibir.toUpperCase()}</div>
+                  <div className="cn-numero-bar">{numeroCartao} · {statusPlano} · {cidadeBen}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
@@ -613,9 +633,9 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                   <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>RESPONSÁVEL</div><div style={{ fontWeight: '700', color: 'var(--azul)' }}>João Carlos Silva</div></div>
-                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>BENEFICIÁRIO</div><div style={{ fontWeight: '700', color: 'var(--azul)' }}>Pedro Carlos Silva</div></div>
-                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>PLANO ATÉ</div><div style={{ color: '#1a7a4a', fontWeight: '700' }}>15/Jun/2026</div></div>
-                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>CARTÃO</div><div>FS-2025-00042</div></div>
+                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>BENEFICIÁRIO</div><div style={{ fontWeight: '700', color: 'var(--azul)' }}>{nomeExibir}</div></div>
+                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>PLANO ATÉ</div><div style={{ color: '#1a7a4a', fontWeight: '700' }}>{validadeCartao}</div></div>
+                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>CARTÃO</div><div>{numeroCartao}</div></div>
                 </div>
                 <div style={{ borderTop: '1px solid #f0eeea', paddingTop: '14px', fontSize: '12px', color: 'var(--cinza)', lineHeight: '1.7' }}>
                   🔒 Seus dados são protegidos pela LGPD (Lei 13.709/2018).
