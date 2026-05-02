@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
   // Tentar buscar customer existente
   const searchResponse = await fetch(
-    `https://sandbox.asaas.com/api/v3/customers?cpfCnpj=${beneficiario.cpf}`,
+    `https://api.asaas.com/api/v3/customers?cpfCnpj=${beneficiario.cpf}`,
     {
       headers: { 'access_token': apiKey },
     }
@@ -26,7 +26,7 @@ async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
     externalReference: beneficiario.id,
   };
 
-  const createResponse = await fetch('https://sandbox.asaas.com/api/v3/customers', {
+  const createResponse = await fetch('https://api.asaas.com/api/v3/customers', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix
     externalReference: beneficiario.id,
   };
 
-  const response = await fetch('https://sandbox.asaas.com/api/v3/payments', {
+  const response = await fetch('https://api.asaas.com/api/v3/payments', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix
   const data = await response.json();
 
   if (metodo === 'pix' && data.id) {
-    const pixResponse = await fetch(`https://sandbox.asaas.com/api/v3/payments/${data.id}/pixQrCode`, {
+    const pixResponse = await fetch(`https://api.asaas.com/api/v3/payments/${data.id}/pixQrCode`, {
       headers: { 'access_token': apiKey },
     });
 
