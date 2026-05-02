@@ -1,7 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-async function criarCobrancaAsaas(beneficiarioId: string, valor: number, metodo: 'pix' | 'cartao_credito') {
+async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
+  // Tentar buscar customer existente
+  const searchResponse = await fetch(
+    `https://sandbox.asaas.com/api/v3/customers?cpfCnpj=${beneficiario.cpf}`,
+    {
+      headers: { 'access_token': apiKey },
+    }
+  );
+
+  if (searchResponse.ok) {
+    const searchData = await searchResponse.json();
+    if (searchData.data && searchData.data.length > 0) {
+      return searchData.data[0].id;
+    }
+  }
+
+  // Criar novo customer
+  const customerPayload = {
+    name: beneficiario.nome_completo,
+    cpfCnpj: beneficiario.cpf,
+    email: beneficiario.email,
+    phone: beneficiario.whatsapp,
+    externalReference: beneficiario.id,
+  };
+
+  const createResponse = await fetch('https://sandbox.asaas.com/api/v3/customers', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'access_token': apiKey,
+    },
+    body: JSON.stringify(customerPayload),
+  });
+
+  if (!createResponse.ok) {
+    const error = await createResponse.text();
+    console.error('Erro ao criar customer:', error);
+    throw new Error('Falha ao criar cliente no gateway');
+  }
+
+  const customerData = await createResponse.json();
+  return customerData.id;
+}
+
+async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix' | 'cartao_credito') {
   const apiKey = process.env.ASAAS_API_KEY;
 
   if (!apiKey) {
@@ -9,18 +53,21 @@ async function criarCobrancaAsaas(beneficiarioId: string, valor: number, metodo:
     return {
       id: `sim-${Date.now()}`,
       pixQrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      pixCopyPaste: '00020126580014br.gov.bcb.pix0136' + beneficiarioId.substring(0, 20) + '520400005303986540599.905802BR5925FUTURA SAUDE6009SANTAREM62070503***6304XXXX',
+      pixCopyPaste: '00020126580014br.gov.bcb.pix0136' + beneficiario.id.substring(0, 20) + '520400005303986540599.905802BR5925FUTURA SAUDE6009SANTAREM62070503***6304XXXX',
       status: 'PENDING',
     };
   }
 
+  // Criar ou buscar customer no Asaas
+  const customerId = await criarOuBuscarCustomer(beneficiario, apiKey);
+
   const payload: any = {
-    customer: beneficiarioId,
+    customer: customerId,
     billingType: metodo === 'pix' ? 'PIX' : 'CREDIT_CARD',
     value: valor,
     dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     description: 'Cartão Futura Saúde - Plano Anual',
-    externalReference: beneficiarioId,
+    externalReference: beneficiario.id,
   };
 
   const response = await fetch('https://sandbox.asaas.com/api/v3/payments', {
@@ -82,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     const { data: beneficiario, error: benError } = await supabaseAdmin
       .from('beneficiarios')
-      .select('id, responsavel_id, nome_completo')
+      .select('id, responsavel_id, nome_completo, cpf, email, whatsapp')
       .eq('id', beneficiario_id)
       .single();
 
@@ -95,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     const valor = 99.90;
 
-    const cobranca = await criarCobrancaAsaas(beneficiario_id, valor, metodo as 'pix' | 'cartao_credito');
+    const cobranca = await criarCobrancaAsaas(beneficiario, valor, metodo as 'pix' | 'cartao_credito');
 
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from('pagamentos')
