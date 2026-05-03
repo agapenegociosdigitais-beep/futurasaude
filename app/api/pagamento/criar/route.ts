@@ -21,8 +21,6 @@ async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
   const customerPayload = {
     name: beneficiario.nome_completo,
     cpfCnpj: beneficiario.cpf,
-    email: beneficiario.email,
-    phone: beneficiario.whatsapp,
     externalReference: beneficiario.id,
   };
 
@@ -129,7 +127,7 @@ export async function POST(request: NextRequest) {
 
     const { data: beneficiario, error: benError } = await supabaseAdmin
       .from('beneficiarios')
-      .select('id, responsavel_id, nome_completo, cpf, email, whatsapp')
+      .select('id, responsavel_id, nome_completo, cpf')
       .eq('id', beneficiario_id)
       .single();
 
