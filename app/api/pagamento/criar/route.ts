@@ -36,6 +36,8 @@ async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
   if (!createResponse.ok) {
     const error = await createResponse.text();
     console.error('Erro ao criar customer:', error);
+    console.error('Status:', createResponse.status);
+    console.error('Payload enviado:', JSON.stringify(customerPayload));
     throw new Error('Falha ao criar cliente no gateway');
   }
 
