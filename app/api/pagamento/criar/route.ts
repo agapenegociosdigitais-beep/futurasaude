@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
 async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
+  const baseUrl = process.env.ASAAS_ENVIRONMENT === 'production'
+    ? 'https://api.asaas.com/api/v3'
+    : 'https://sandbox.asaas.com/api/v3';
+
   // Tentar buscar customer existente
   const searchResponse = await fetch(
-    `https://api.asaas.com/api/v3/customers?cpfCnpj=${beneficiario.cpf}`,
+    `${baseUrl}/customers?cpfCnpj=${beneficiario.cpf}`,
     {
       headers: { 'access_token': apiKey },
     }
@@ -24,7 +28,7 @@ async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
     externalReference: beneficiario.id,
   };
 
-  const createResponse = await fetch('https://api.asaas.com/api/v3/customers', {
+  const createResponse = await fetch(`${baseUrl}/customers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -47,6 +51,9 @@ async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
 
 async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix' | 'cartao_credito') {
   const apiKey = process.env.ASAAS_API_KEY;
+  const baseUrl = process.env.ASAAS_ENVIRONMENT === 'production'
+    ? 'https://api.asaas.com/api/v3'
+    : 'https://sandbox.asaas.com/api/v3';
 
   if (!apiKey) {
     console.warn('ASAAS_API_KEY não configurada, usando modo simulado');
@@ -70,7 +77,7 @@ async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix
     externalReference: beneficiario.id,
   };
 
-  const response = await fetch('https://api.asaas.com/api/v3/payments', {
+  const response = await fetch(`${baseUrl}/payments`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -88,7 +95,7 @@ async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix
   const data = await response.json();
 
   if (metodo === 'pix' && data.id) {
-    const pixResponse = await fetch(`https://api.asaas.com/api/v3/payments/${data.id}/pixQrCode`, {
+    const pixResponse = await fetch(`${baseUrl}/payments/${data.id}/pixQrCode`, {
       headers: { 'access_token': apiKey },
     });
 
