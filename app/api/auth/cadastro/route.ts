@@ -57,6 +57,18 @@ export async function POST(request: NextRequest) {
     if (!cpf?.trim() || cpf.replace(/\D/g, '').length !== 11) {
       return NextResponse.json({ message: 'CPF inválido' }, { status: 400 });
     }
+    if (!data_nascimento?.trim()) {
+      return NextResponse.json({ message: 'Data de nascimento é obrigatória' }, { status: 400 });
+    }
+    if (!whatsapp?.trim()) {
+      return NextResponse.json({ message: 'WhatsApp é obrigatório' }, { status: 400 });
+    }
+    if (!cidade?.trim()) {
+      return NextResponse.json({ message: 'Cidade é obrigatória' }, { status: 400 });
+    }
+    if (!bairro?.trim()) {
+      return NextResponse.json({ message: 'Bairro é obrigatório' }, { status: 400 });
+    }
 
     // Beneficiário — usar dados do responsável se não informado
     const benNome = beneficiario_nome?.trim() || nome_completo;
@@ -107,11 +119,11 @@ export async function POST(request: NextRequest) {
         tipo: 'beneficiario',
         nome_completo: nome_completo.trim(),
         cpf: cpf.replace(/\D/g, ''),
-        whatsapp: whatsapp?.replace(/\D/g, '') || '',
+        whatsapp: whatsapp.replace(/\D/g, ''),
         email: email.toLowerCase().trim(),
-        data_nascimento: data_nascimento || null,
-        cidade: cidade?.trim() || 'Santarém',
-        bairro: bairro?.trim() || '',
+        data_nascimento: data_nascimento,
+        cidade: cidade.trim(),
+        bairro: bairro.trim(),
         cep: cep?.replace(/\D/g, '') || '',
       });
 
