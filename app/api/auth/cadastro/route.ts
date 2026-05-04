@@ -131,6 +131,16 @@ export async function POST(request: NextRequest) {
       // Rollback — remover usuário criado
       await supabaseAdmin.auth.admin.deleteUser(userId);
       console.error('Erro perfil:', perfilError);
+
+      if (perfilError.code === '23505') {
+        if (perfilError.message.includes('cpf')) {
+          return NextResponse.json({ message: 'CPF já cadastrado' }, { status: 400 });
+        }
+        if (perfilError.message.includes('email')) {
+          return NextResponse.json({ message: 'E-mail já cadastrado' }, { status: 400 });
+        }
+      }
+
       return NextResponse.json(
         { message: 'Erro ao criar perfil. Tente novamente.' },
         { status: 400 }
