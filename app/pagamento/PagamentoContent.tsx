@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 export default function PagamentoContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [metodo, setMetodo] = useState<'pix' | 'cartao_credito'>('pix');
+  const metodo = 'pix';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pagamentoData, setPagamentoData] = useState<any>(null);
@@ -98,10 +98,8 @@ export default function PagamentoContent() {
         .subtitle { font-size: 14px; color: var(--cinza); margin-bottom: 24px; }
         .price { font-size: 36px; font-weight: 800; color: var(--azul); text-align: center; margin: 24px 0; }
         .price span { font-size: 16px; color: var(--cinza); }
-        .tabs { display: flex; gap: 12px; margin-bottom: 32px; border-bottom: 2px solid #f0eeea; }
-        .tab { flex: 1; padding: 14px 16px; border: none; background: none; cursor: pointer; color: var(--cinza); border-bottom: 3px solid transparent; transition: all .3s; font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 600; }
-        .tab.ativo { color: var(--azul); border-bottom-color: var(--dourado); }
-        .tab:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tabs { display: none; }
+        .tab { display: none; }
         .pix-container { text-align: center; padding: 24px; background: #f8f9fa; border-radius: 16px; }
         .qr-code { width: 250px; height: 250px; margin: 0 auto 16px; background: white; border: 2px solid var(--dourado); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
         .qr-code img { max-width: 100%; max-height: 100%; }
@@ -130,23 +128,6 @@ export default function PagamentoContent() {
 
           {!pagamentoData ? (
             <>
-              <div className="tabs">
-                <button
-                  className={`tab ${metodo === 'pix' ? 'ativo' : ''}`}
-                  onClick={() => setMetodo('pix')}
-                  disabled={loading}
-                >
-                  💳 PIX
-                </button>
-                <button
-                  className={`tab ${metodo === 'cartao_credito' ? 'ativo' : ''}`}
-                  onClick={() => setMetodo('cartao_credito')}
-                  disabled={loading}
-                >
-                  💰 Cartão de Crédito
-                </button>
-              </div>
-
               <button
                 className="btn-principal"
                 onClick={criarPagamento}
@@ -157,13 +138,13 @@ export default function PagamentoContent() {
                     <span className="loading"></span> Gerando pagamento...
                   </>
                 ) : (
-                  `Pagar com ${metodo === 'pix' ? 'PIX' : 'Cartão'}`
+                  '💳 Pagar com PIX'
                 )}
               </button>
             </>
           ) : (
             <>
-              {metodo === 'pix' && pagamentoData.pixQrCode && (
+              {pagamentoData.pixQrCode && (
                 <div className="pix-container">
                   <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--azul)', marginBottom: '16px' }}>
                     Escaneie o QR Code ou copie o código PIX
@@ -211,25 +192,6 @@ export default function PagamentoContent() {
                       ⏳ Aguardando confirmação do pagamento...
                     </div>
                   )}
-                </div>
-              )}
-
-              {metodo === 'cartao_credito' && (
-                <div style={{ textAlign: 'center', padding: '24px' }}>
-                  <div style={{ fontSize: '14px', color: 'var(--cinza)' }}>
-                    Integração com cartão de crédito em desenvolvimento.
-                    <br />
-                    Por favor, utilize PIX.
-                  </div>
-                  <button
-                    className="btn-principal"
-                    onClick={() => {
-                      setPagamentoData(null);
-                      setMetodo('pix');
-                    }}
-                  >
-                    Voltar e pagar com PIX
-                  </button>
                 </div>
               )}
             </>
