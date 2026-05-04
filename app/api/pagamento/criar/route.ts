@@ -55,7 +55,7 @@ async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix
     ? 'https://api.asaas.com/api/v3'
     : 'https://sandbox.asaas.com/api/v3';
 
-  if (!apiKey) {
+  if (!apiKey || apiKey === 'aact_your_key_here') {
     console.warn('ASAAS_API_KEY não configurada, usando modo simulado');
     return {
       id: `sim-${Date.now()}`,
