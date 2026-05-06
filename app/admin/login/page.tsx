@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      router.push('/admin');
+      window.location.href = '/admin';
     } catch {
       setError('Erro ao conectar ao servidor');
     } finally {
