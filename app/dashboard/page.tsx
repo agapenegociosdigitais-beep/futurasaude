@@ -15,27 +15,19 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('sb-access-token');
-    const cookieToken = document.cookie
-      .split(';')
-      .find(c => c.trim().startsWith('sb-access-token='))
-      ?.split('=')[1];
+    // Obter token do localStorage (salvo após login bem-sucedido)
+        const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null;
 
-    const activeToken = token || cookieToken;
+        // Carregar foto — primeiro do localStorage (instantâneo)
+        const fotoSalva = localStorage.getItem('fs-foto-url');
+        if (fotoSalva) setFotoUrl(fotoSalva);
 
-    if (!activeToken) {
-      router.replace('/login');
-      return;
-    }
+        // Buscar dados reais do beneficiário
+        // O middleware já garante que o usuário está autenticado nesta rota
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    // Carregar foto — primeiro do localStorage (instantâneo)
-    const fotoSalva = localStorage.getItem('fs-foto-url');
-    if (fotoSalva) setFotoUrl(fotoSalva);
-
-    // Buscar dados reais do beneficiário
-    fetch('/api/beneficiario/perfil', {
-      headers: { Authorization: `Bearer ${activeToken}` }
-    })
+        fetch('/api/beneficiario/perfil', { headers })
       .then(res => res.json())
       .then(data => {
         if (data.beneficiario) {
