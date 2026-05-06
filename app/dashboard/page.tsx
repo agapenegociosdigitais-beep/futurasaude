@@ -406,16 +406,21 @@ export default function DashboardPage() {
           </button>
         </nav>
         <div style={{ padding: '14px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <button className="btn-sair" onClick={() => {
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('sb-access-token');
-              localStorage.removeItem('sb-refresh-token');
-              localStorage.removeItem('fs-foto-url');
-            }
-            document.cookie = 'sb-access-token=; max-age=0; path=/';
-            document.cookie = 'sb-refresh-token=; max-age=0; path=/';
-            window.location.href = '/login';
-          }}>
+          <button className="btn-sair" onClick={async () => {
+                  // Limpar localStorage
+                  if (typeof window !== 'undefined') {
+                                  localStorage.removeItem('sb-access-token');
+                                  localStorage.removeItem('sb-refresh-token');
+                                  localStorage.removeItem('fs-foto-url');
+                                  localStorage.removeItem('usuario_nome');
+                  }
+                  // Chamar API de logout para deletar os cookies httpOnly no servidor
+                  try {
+                                  await fetch('/api/auth/logout', { method: 'POST' });
+                  } catch {}
+                  // Redirecionar para login
+                  window.location.href = '/login';
+    }}>
             🚪 Sair
           </button>
         </div>
