@@ -113,7 +113,7 @@ export default function PagamentoContent() {
                                                                                                                                                                                               .verificando { background: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 12px; border-radius: 8px; margin-top: 16px; font-size: 13px; text-align: center; }
                                                                                                                                                                                                       .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
                                                                                                                                                                                                               @keyframes spin { to { transform: rotate(360deg); } }
-                                                                                                                                                                                                                    `}</style>style>
+                                                                                                                                                                                                                    `}</style>
         
               <div className="page-container">
                       <div className="card-wrapper">
