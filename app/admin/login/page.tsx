@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Shield } from 'lucide-react';
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,7 +35,12 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+      if (data.perfil !== 'admin') {
+        setError('Acesso restrito a administradores');
+        return;
+      }
+
+      router.push('/admin');
     } catch {
       setError('Erro ao conectar ao servidor');
     } finally {
@@ -45,17 +49,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a2a5e] to-[#1c3a7a] flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a2a5e] to-[#0d1b3e] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <span className="text-4xl font-bold text-white">fs</span>
-            <span className="text-white text-sm">saúde</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-6">
+            <Shield className="w-8 h-8 text-[#f5c842]" />
           </div>
-          <h1 className="text-4xl font-bold text-white font-lora">
-            Bem-vindo
+          <h1 className="text-3xl font-bold text-white">
+            Painel Administrativo
           </h1>
-          <p className="text-gray-300 mt-2">Acesse sua conta</p>
+          <p className="text-gray-400 mt-2">Acesso restrito a administradores</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl p-8">
@@ -75,9 +78,9 @@ export default function LoginPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="seu@email.com"
+                placeholder="admin@futurasaude.com"
                 required
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#0a2a5e] focus:outline-none transition"
               />
             </div>
 
@@ -93,7 +96,7 @@ export default function LoginPage() {
                   onChange={handleChange}
                   placeholder="••••••••"
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none transition"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#0a2a5e] focus:outline-none transition"
                 />
                 <button
                   type="button"
@@ -105,54 +108,23 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 border-gray-300 rounded"
-                />
-                <span className="text-gray-700">Lembrar-me</span>
-              </label>
-              <Link
-                href="/recuperar-senha"
-                className="text-[#f5c842] hover:underline font-semibold"
-              >
-                Esqueci a senha
-              </Link>
-            </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-6 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-lg font-bold text-lg hover:bg-[#f0b820] transition disabled:opacity-50"
+              className="w-full px-6 py-3 bg-[#0a2a5e] text-white rounded-lg font-bold text-lg hover:bg-[#1c3a7a] transition disabled:opacity-50"
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
-
-          <p className="text-center text-gray-700 mt-6">
-            Não tem conta?{' '}
-            <Link
-              href="/cadastro"
-              className="text-[#f5c842] font-bold hover:underline"
-            >
-              Criar agora
-            </Link>
-          </p>
         </div>
 
-        <div className="text-center mt-8 text-gray-300 text-sm">
-          <p>
-            Precisa de ajuda?{' '}
-            <a
-              href="https://wa.me/5593992173231"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#f5c842] hover:underline font-semibold"
-            >
-              Fale conosco no WhatsApp
-            </a>
-          </p>
+        <div className="text-center mt-8">
+          <a
+            href="/login"
+            className="text-gray-400 hover:text-white text-sm transition"
+          >
+            ← Voltar ao login de beneficiário
+          </a>
         </div>
       </div>
     </div>

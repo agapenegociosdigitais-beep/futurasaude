@@ -1,52 +1,79 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const PUBLIC_ROUTES = ['/', '/login', '/cadastro', '/pagamento', '/admin/login'];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.includes(pathname);
+}
+
+function isStaticOrApi(pathname: string): boolean {
+  return (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.includes('.')) {
+  if (isStaticOrApi(pathname)) {
     return NextResponse.next();
   }
 
   const accessToken = request.cookies.get('sb-access-token')?.value;
   const refreshToken = request.cookies.get('sb-refresh-token')?.value;
 
-  const publicRoutes = ['/', '/login', '/cadastro', '/pagamento'];
-  if (publicRoutes.includes(pathname)) {
+  if (isPublicRoute(pathname)) {
     if (accessToken && pathname === '/login') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    if (accessToken && pathname === '/admin/login') {
+      return NextResponse.redirect(new URL('/admin', request.url));
     }
     return NextResponse.next();
   }
 
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
-    if (!accessToken) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
+  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
+
+  if (!isProtected) {
+    return NextResponse.next();
+  }
+
+  if (!accessToken) {
+    const loginUrl = pathname.startsWith('/admin')
+      ? new URL('/admin/login', request.url)
+      : new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('[MW] Variáveis Supabase ausentes');
+      const loginUrl = pathname.startsWith('/admin')
+        ? new URL('/admin/login', request.url)
+        : new URL('/login', request.url);
+      const redirect = NextResponse.redirect(loginUrl);
+      redirect.cookies.delete('sb-access-token');
+      redirect.cookies.delete('sb-refresh-token');
+      return redirect;
     }
 
-    try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('[MW] Variáveis de ambiente Supabase não disponíveis');
-        const redirect = NextResponse.redirect(new URL('/login', request.url));
-        redirect.cookies.delete('sb-access-token');
-        redirect.cookies.delete('sb-refresh-token');
-        return redirect;
-      }
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
 
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    if (error || !user) {
+      console.error('[MW] Token inválido:', error?.message);
 
-      const { data: { user }, error } = await supabase.auth.getUser(accessToken);
-
-      if (error || !user) {
-        console.error('[MW] Token inválido:', error?.message);
-
-        if (refreshToken) {
+      if (refreshToken) {
+        try {
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
             refresh_token: refreshToken,
           });
@@ -69,37 +96,51 @@ export async function middleware(request: NextRequest) {
             });
             return redirect;
           }
+        } catch (refreshErr) {
+          console.error('[MW] Refresh falhou:', refreshErr);
         }
+      }
 
-        const redirect = NextResponse.redirect(new URL('/login', request.url));
+      const loginUrl = pathname.startsWith('/admin')
+        ? new URL('/admin/login', request.url)
+        : new URL('/login', request.url);
+      const redirect = NextResponse.redirect(loginUrl);
+      redirect.cookies.delete('sb-access-token');
+      redirect.cookies.delete('sb-refresh-token');
+      return redirect;
+    }
+
+    if (pathname.startsWith('/admin')) {
+      const { data: perfil, error: perfilError } = await supabase
+        .from('perfis')
+        .select('tipo')
+        .eq('id', user.id)
+        .single();
+
+      if (perfilError) {
+        console.error('[MW] Erro ao buscar perfil:', perfilError.message);
+        const redirect = NextResponse.redirect(new URL('/admin/login', request.url));
         redirect.cookies.delete('sb-access-token');
         redirect.cookies.delete('sb-refresh-token');
         return redirect;
       }
 
-      if (pathname.startsWith('/admin')) {
-        const { data: perfil } = await supabase
-          .from('perfis')
-          .select('tipo')
-          .eq('id', user.id)
-          .single();
-
-        if (perfil?.tipo !== 'admin') {
-          return NextResponse.redirect(new URL('/dashboard', request.url));
-        }
+      if (perfil?.tipo !== 'admin') {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
       }
-
-      return NextResponse.next();
-    } catch (err) {
-      console.error('[MW] Erro:', err);
-      const redirect = NextResponse.redirect(new URL('/login', request.url));
-      redirect.cookies.delete('sb-access-token');
-      redirect.cookies.delete('sb-refresh-token');
-      return redirect;
     }
-  }
 
-  return NextResponse.next();
+    return NextResponse.next();
+  } catch (err) {
+    console.error('[MW] Erro inesperado:', err);
+    const loginUrl = pathname.startsWith('/admin')
+      ? new URL('/admin/login', request.url)
+      : new URL('/login', request.url);
+    const redirect = NextResponse.redirect(loginUrl);
+    redirect.cookies.delete('sb-access-token');
+    redirect.cookies.delete('sb-refresh-token');
+    return redirect;
+  }
 }
 
 export const config = {
