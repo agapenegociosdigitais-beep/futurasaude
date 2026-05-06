@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
-  const baseUrl = process.env.ASAAS_ENVIRONMENT === 'production'
-    ? 'https://api.asaas.com/api/v3'
-    : 'https://sandbox.asaas.com/api/v3';
+function getAsaasConfig() {
+  const apiKey = process.env.ASAAS_API_KEY;
+  if (!apiKey || apiKey === 'aact_your_key_here') {
+    return { apiKey: null, baseUrl: null, isSandbox: true };
+  }
+  const isSandbox = apiKey.includes('_ylw_') || apiKey.includes('_yw_');
+  const baseUrl = isSandbox
+    ? 'https://sandbox.asaas.com/api/v3'
+    : 'https://api.asaas.com/api/v3';
+  return { apiKey, baseUrl, isSandbox };
+}
 
-  // Tentar buscar customer existente
+async function criarOuBuscarCustomer(beneficiario: any, apiKey: string, baseUrl: string) {
   const searchResponse = await fetch(
     `${baseUrl}/customers?cpfCnpj=${beneficiario.cpf}`,
     {
@@ -21,7 +28,6 @@ async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
     }
   }
 
-  // Criar novo customer
   const customerPayload = {
     name: beneficiario.nome_completo,
     cpfCnpj: beneficiario.cpf,
@@ -41,8 +47,9 @@ async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
     const error = await createResponse.text();
     console.error('Erro ao criar customer:', error);
     console.error('Status:', createResponse.status);
+    console.error('Ambiente:', baseUrl);
     console.error('Payload enviado:', JSON.stringify(customerPayload));
-    throw new Error('Falha ao criar cliente no gateway');
+    throw new Error(`Falha ao criar cliente no gateway (${createResponse.status}): ${error}`);
   }
 
   const customerData = await createResponse.json();
@@ -50,12 +57,9 @@ async function criarOuBuscarCustomer(beneficiario: any, apiKey: string) {
 }
 
 async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix' | 'cartao_credito') {
-  const apiKey = process.env.ASAAS_API_KEY;
-  const baseUrl = process.env.ASAAS_ENVIRONMENT === 'production'
-    ? 'https://api.asaas.com/api/v3'
-    : 'https://sandbox.asaas.com/api/v3';
+  const { apiKey, baseUrl } = getAsaasConfig();
 
-  if (!apiKey || apiKey === 'aact_your_key_here') {
+  if (!apiKey || !baseUrl) {
     console.warn('ASAAS_API_KEY não configurada, usando modo simulado');
     return {
       id: `sim-${Date.now()}`,
@@ -65,8 +69,7 @@ async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix
     };
   }
 
-  // Criar ou buscar customer no Asaas
-  const customerId = await criarOuBuscarCustomer(beneficiario, apiKey);
+  const customerId = await criarOuBuscarCustomer(beneficiario, apiKey, baseUrl);
 
   const payload: any = {
     customer: customerId,
@@ -89,7 +92,8 @@ async function criarCobrancaAsaas(beneficiario: any, valor: number, metodo: 'pix
   if (!response.ok) {
     const error = await response.text();
     console.error('Erro Asaas:', error);
-    throw new Error('Falha ao criar cobrança no gateway');
+    console.error('Ambiente:', baseUrl);
+    throw new Error(`Falha ao criar cobrança no gateway (${response.status}): ${error}`);
   }
 
   const data = await response.json();
