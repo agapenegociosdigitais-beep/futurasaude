@@ -36,6 +36,11 @@ export default function LoginPage() {
         return;
       }
 
+      // Salvar token no localStorage para o dashboard verificar
+            if (data.access_token) {
+                      localStorage.setItem('sb-access-token', data.access_token);
+                      localStorage.setItem('sb-refresh-token', data.refresh_token || '');
+            }
       router.push('/dashboard');
     } catch {
       setError('Erro ao conectar ao servidor');
