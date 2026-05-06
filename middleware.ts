@@ -27,7 +27,24 @@ export async function middleware(request: NextRequest) {
 
   if (isPublicRoute(pathname)) {
     if (accessToken && pathname === '/login') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+            // Validar token antes de redirecionar para evitar loop infinito
+            try {
+                      const { createClient } = await import('@supabase/supabase-js');
+                      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+                      if (supabaseUrl && supabaseAnonKey) {
+                                  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+                                  const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+                                  if (!error && user) {
+                                                return NextResponse.redirect(new URL('/dashboard', request.url));
+                                  }
+                      }
+            } catch {}
+            // Token inválido — limpar cookie e mostrar o login normalmente
+            const response = NextResponse.next();
+            response.cookies.delete('sb-access-token');
+            response.cookies.delete('sb-refresh-token');
+            return response;
     }
     if (accessToken && pathname === '/admin/login') {
       return NextResponse.redirect(new URL('/admin', request.url));
