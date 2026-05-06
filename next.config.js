@@ -19,7 +19,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.asaas.com https://api.mercadopago.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.asaas.com https://api.mercadopago.com https://wa.me",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -32,12 +32,6 @@ const nextConfig = {
   poweredByHeader: false,
   images: {
     unoptimized: true,
-  },
-  async rewrites() {
-    return [
-      { source: '/login', destination: '/login.html' },
-      { source: '/cadastro', destination: '/cadastro.html' },
-    ];
   },
   async headers() {
     return [

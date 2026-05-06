@@ -24,12 +24,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: perfil } = await supabaseAdmin
+      .from('perfis')
+      .select('tipo')
+      .eq('id', data.user.id)
+      .single();
+
     const response = NextResponse.json(
       {
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
         user: data.user,
-        message: 'Login bem-sucedido'
+        perfil: perfil?.tipo || 'beneficiario',
+        message: 'Login bem-sucedido',
       },
       { status: 200 }
     );
@@ -41,7 +48,7 @@ export async function POST(request: Request) {
       secure: isProd,
       sameSite: 'lax',
       maxAge: 3600,
-      path: '/'
+      path: '/',
     });
 
     response.cookies.set('sb-refresh-token', data.session.refresh_token, {
@@ -49,11 +56,12 @@ export async function POST(request: Request) {
       secure: isProd,
       sameSite: 'lax',
       maxAge: 604800,
-      path: '/'
+      path: '/',
     });
 
     return response;
   } catch (error: any) {
+    console.error('[LOGIN] Erro:', error);
     return NextResponse.json(
       { message: 'Erro interno do servidor' },
       { status: 500 }
