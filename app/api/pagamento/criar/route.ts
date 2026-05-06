@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     const { data: beneficiario, error: benError } = await supabaseAdmin
       .from('beneficiarios')
-      .select('id, responsavel_id, nome_completo, cpf')
+      .select('id, responsavel_id, nome_completo, cpf, status')
       .eq('id', beneficiario_id)
       .single();
 
