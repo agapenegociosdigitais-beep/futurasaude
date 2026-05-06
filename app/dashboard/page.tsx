@@ -44,6 +44,10 @@ export default function DashboardPage() {
             setFotoUrl(data.beneficiario.foto_url);
             localStorage.setItem('fs-foto-url', data.beneficiario.foto_url);
           }
+          if (data.beneficiario.status === 'pendente') {
+            router.replace('/pagamento-pendente');
+            return;
+          }
         }
       })
       .catch(() => {})

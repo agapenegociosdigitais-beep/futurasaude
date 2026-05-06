@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -12,12 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
       email,
       password,
     });
@@ -39,11 +34,10 @@ export async function POST(request: Request) {
       { status: 200 }
     );
 
-    // TODO security: refatorar HTML estatico para usar cookie auth via /api/auth/session
-    // e tornar tokens httpOnly (mitigacao XSS).
     const isProd = process.env.NODE_ENV === 'production';
+
     response.cookies.set('sb-access-token', data.session.access_token, {
-      httpOnly: false,
+      httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
       maxAge: 3600,
@@ -51,18 +45,17 @@ export async function POST(request: Request) {
     });
 
     response.cookies.set('sb-refresh-token', data.session.refresh_token, {
-      httpOnly: false,
+      httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
-      maxAge: 86400 * 30,
+      maxAge: 604800,
       path: '/'
     });
 
     return response;
-
   } catch (error: any) {
     return NextResponse.json(
-      { message: 'Erro interno: ' + error.message },
+      { message: 'Erro interno do servidor' },
       { status: 500 }
     );
   }

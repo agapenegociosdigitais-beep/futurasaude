@@ -1,0 +1,232 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Eye, EyeOff, Shield } from 'lucide-react';
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [error, setError] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || 'Erro ao fazer login');
+        return;
+      }
+
+      router.push(adminMode ? '/admin' : '/dashboard');
+    } catch (err) {
+      setError('Erro ao conectar ao servidor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0a2a5e] to-[#1c3a7a] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 mb-6">
+            <span className="text-4xl font-bold text-white">fs</span>
+            <span className="text-white text-sm">saúde</span>
+          </div>
+          <h1 className="text-4xl font-bold text-white font-lora">
+            Bem-vindo
+          </h1>
+          <p className="text-gray-300 mt-2">
+            {adminMode ? 'Acesso Administrativo' : 'Acesse sua conta'}
+          </p>
+        </div>
+
+        {/* Form Card */}
+        <div className="bg-white rounded-3xl shadow-2xl p-8">
+          {adminMode && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-400 text-blue-700 rounded-lg text-sm flex items-center gap-2">
+              <Shield className="w-5 h-5 shrink-0" />
+              <span>Modo administrador — acesso restrito</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="seu@email.com"
+                required
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none transition"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                Senha
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-3 text-gray-600 hover:text-[#0a2a5e]"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember + Forgot */}
+            {!adminMode && (
+              <div className="flex justify-between items-center text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 border-gray-300 rounded"
+                  />
+                  <span className="text-gray-700">Lembrar-me</span>
+                </label>
+                <Link
+                  href="/recuperar-senha"
+                  className="text-[#f5c842] hover:underline font-semibold"
+                >
+                  Esqueci a senha
+                </Link>
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full px-6 py-3 rounded-lg font-bold text-lg transition disabled:opacity-50 ${
+                adminMode
+                  ? 'bg-[#0a2a5e] text-white hover:bg-[#1c3a7a]'
+                  : 'bg-[#f5c842] text-[#0a2a5e] hover:bg-[#f0b820]'
+              }`}
+            >
+              {loading
+                ? 'Entrando...'
+                : adminMode
+                ? 'Entrar como Admin'
+                : 'Entrar'}
+            </button>
+          </form>
+
+          {/* Admin Toggle */}
+          {adminMode ? (
+            <button
+              onClick={() => {
+                setAdminMode(false);
+                setFormData({ email: '', password: '' });
+                setError('');
+              }}
+              className="w-full mt-6 px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-[#0a2a5e] hover:bg-gray-50 transition"
+            >
+              Voltar ao login normal
+            </button>
+          ) : (
+            <>
+              {/* Divider */}
+              <div className="my-6 flex items-center gap-4">
+                <div className="flex-1 bg-gray-300 h-px"></div>
+                <span className="text-gray-500 text-sm">ou</span>
+                <div className="flex-1 bg-gray-300 h-px"></div>
+              </div>
+
+              {/* Admin Button */}
+              <button
+                onClick={() => {
+                  setAdminMode(true);
+                  setError('');
+                }}
+                className="w-full px-6 py-3 border-2 border-[#0a2a5e] rounded-lg font-semibold text-[#0a2a5e] hover:bg-[#0a2a5e] hover:text-white transition flex items-center justify-center gap-2"
+              >
+                <Shield className="w-5 h-5" />
+                Acesso Administrativo
+              </button>
+            </>
+          )}
+
+          {/* Sign Up Link */}
+          {!adminMode && (
+            <p className="text-center text-gray-700 mt-6">
+              Não tem conta?{' '}
+              <Link
+                href="/cadastro"
+                className="text-[#f5c842] font-bold hover:underline"
+              >
+                Criar agora
+              </Link>
+            </p>
+          )}
+        </div>
+
+        {/* Footer Help */}
+        <div className="text-center mt-8 text-gray-300 text-sm">
+          <p>
+            Precisa de ajuda?{' '}
+            <a
+              href="https://wa.me/5593992173231"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#f5c842] hover:underline font-semibold"
+            >
+              Fale conosco no WhatsApp
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

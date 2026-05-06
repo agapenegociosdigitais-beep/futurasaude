@@ -6,26 +6,41 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await Promise.resolve(params);
+    const token = request.cookies.get('sb-access-token')?.value;
 
-    const { data, error } = await supabaseAdmin
-      .from('pagamentos')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      return NextResponse.json(
-        { message: 'Pagamento não encontrado' },
-        { status: 404 }
-      );
+    if (!token) {
+      return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
     }
 
-    return NextResponse.json(data, { status: 200 });
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json({ message: 'Token inválido' }, { status: 401 });
+    }
+
+    const { data: pagamento, error } = await supabaseAdmin
+      .from('pagamentos')
+      .select('id, beneficiario_id, responsavel_id, status, valor, metodo, pago_em')
+      .eq('id', params.id)
+      .single();
+
+    if (error || !pagamento) {
+      return NextResponse.json({ message: 'Pagamento não encontrado' }, { status: 404 });
+    }
+
+    if (pagamento.responsavel_id !== user.id) {
+      return NextResponse.json({ message: 'Acesso negado' }, { status: 403 });
+    }
+
+    return NextResponse.json({
+      status: pagamento.status,
+      pagamento_id: pagamento.id,
+      valor: pagamento.valor,
+      metodo: pagamento.metodo,
+      pago_em: pagamento.pago_em,
+    }, { status: 200 });
   } catch (error) {
-    return NextResponse.json(
-      { message: 'Erro interno do servidor' },
-      { status: 500 }
-    );
+    console.error('Erro ao verificar status:', error);
+    return NextResponse.json({ message: 'Erro interno' }, { status: 500 });
   }
 }

@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase';
 
-// Cliente admin com service_role
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// Gerar número do cartão único: FS-2025-00042
 async function gerarNumeroCartao(): Promise<string> {
-  const ano = new Date().getFullYear();
-  const { count } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin.rpc('criar_beneficiario_seq');
+
+  if (!error && data !== null && data !== undefined) {
+    return `FS${String(data).padStart(6, '0')}`;
+  }
+
+  const { data: lastCard } = await supabaseAdmin
     .from('beneficiarios')
-    .select('*', { count: 'exact', head: true });
-  const num = String((count || 0) + 1).padStart(5, '0');
-  return `FS-${ano}-${num}`;
+    .select('numero_cartao')
+    .order('numero_cartao', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (lastCard?.numero_cartao) {
+    const num = parseInt(lastCard.numero_cartao.replace('FS', ''), 10) + 1;
+    return `FS${String(num).padStart(6, '0')}`;
+  }
+
+  return 'FS001000';
 }
 
 export async function POST(request: NextRequest) {
@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
       beneficiario_whatsapp,
     } = body;
 
-    // ── Validações ──
     if (!nome_completo?.trim()) {
       return NextResponse.json({ message: 'Nome completo é obrigatório' }, { status: 400 });
     }
@@ -70,12 +69,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Bairro é obrigatório' }, { status: 400 });
     }
 
-    // Beneficiário — usar dados do responsável se não informado
     const benNome = beneficiario_nome?.trim() || nome_completo;
     const benCpf = beneficiario_cpf?.trim() || cpf;
     const benNasc = beneficiario_data_nascimento?.trim() || data_nascimento;
 
-    // ── Verificar se email já existe ──
     const { data: emailExiste } = await supabaseAdmin
       .from('perfis')
       .select('id')
@@ -89,7 +86,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Criar usuário no Supabase Auth ──
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email.toLowerCase().trim(),
       password,
@@ -111,7 +107,6 @@ export async function POST(request: NextRequest) {
 
     const userId = authData.user.id;
 
-    // ── Criar perfil do responsável ──
     const { error: perfilError } = await supabaseAdmin
       .from('perfis')
       .insert({
@@ -121,14 +116,13 @@ export async function POST(request: NextRequest) {
         cpf: cpf.replace(/\D/g, ''),
         whatsapp: whatsapp.replace(/\D/g, ''),
         email: email.toLowerCase().trim(),
-        data_nascimento: data_nascimento,
+        data_nascimento,
         cidade: cidade.trim(),
         bairro: bairro.trim(),
         cep: cep?.replace(/\D/g, '') || '',
       });
 
     if (perfilError) {
-      // Rollback — remover usuário criado
       await supabaseAdmin.auth.admin.deleteUser(userId);
       console.error('Erro perfil:', perfilError);
 
@@ -141,57 +135,108 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      return NextResponse.json(
-        { message: 'Erro ao criar perfil. Tente novamente.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Erro ao criar perfil. Tente novamente.' }, { status: 400 });
     }
 
-    // ── Gerar número do cartão ──
-    const numeroCartao = await gerarNumeroCartao();
-
-    // ── Criar beneficiário ──
-    const { data: beneficiarioData, error: benefError } = await supabaseAdmin
-      .from('beneficiarios')
-      .insert({
-        responsavel_id: userId,
-        numero_cartao: numeroCartao,
-        nome_completo: benNome,
-        cpf: benCpf.replace(/\D/g, ''),
-        data_nascimento: benNasc || null,
-        parentesco: beneficiario_parentesco || 'Titular',
-        whatsapp: beneficiario_whatsapp?.replace(/\D/g, '') || '',
-        status: 'pendente',
-        sorteio_participa: false,
-      })
-      .select()
-      .single();
-
-    if (benefError) {
-      // Rollback
-      await supabaseAdmin.from('perfis').delete().eq('id', userId);
-      await supabaseAdmin.auth.admin.deleteUser(userId);
-      console.error('Erro beneficiário:', benefError);
-      return NextResponse.json(
-        { message: 'Erro ao criar beneficiário. Tente novamente.' },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
+    // Usa RPC atômica para evitar race condition no número do cartão
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(
+      'criar_beneficiario_seguro',
       {
-        beneficiario_id: beneficiarioData.id,
+        p_responsavel_id: userId,
+        p_nome_completo: benNome,
+        p_cpf: benCpf.replace(/\D/g, ''),
+        p_data_nascimento: benNasc || null,
+        p_telefone: beneficiario_whatsapp?.replace(/\D/g, '') || null,
+        p_email: null,
+      }
+    );
+
+    let beneficiarioId: string;
+    let numeroCartao: string;
+
+    if (rpcError || !rpcResult) {
+      console.warn('RPC falhou, usando fallback:', rpcError?.message);
+      numeroCartao = await gerarNumeroCartao();
+
+      const { data: benefData, error: benefError } = await supabaseAdmin
+        .from('beneficiarios')
+        .insert({
+          responsavel_id: userId,
+          numero_cartao: numeroCartao,
+          nome_completo: benNome,
+          cpf: benCpf.replace(/\D/g, ''),
+          data_nascimento: benNasc || null,
+          parentesco: beneficiario_parentesco || 'Titular',
+          whatsapp: beneficiario_whatsapp?.replace(/\D/g, '') || '',
+          status: 'pendente',
+          sorteio_participa: false,
+        })
+        .select()
+        .single();
+
+      if (benefError) {
+        await supabaseAdmin.from('perfis').delete().eq('id', userId);
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        console.error('Erro beneficiário:', benefError);
+        return NextResponse.json({ message: 'Erro ao criar beneficiário.' }, { status: 400 });
+      }
+
+      beneficiarioId = benefData.id;
+    } else {
+      beneficiarioId = rpcResult.id;
+      numeroCartao = rpcResult.numero_cartao;
+
+      // Atualiza campos extras que o RPC simplificado não cobre
+      await supabaseAdmin
+        .from('beneficiarios')
+        .update({
+          parentesco: beneficiario_parentesco || 'Titular',
+          whatsapp: beneficiario_whatsapp?.replace(/\D/g, '') || '',
+        })
+        .eq('id', beneficiarioId);
+    }
+
+    // Login automático
+    const { data: signInData, error: signInError } =
+      await supabaseAdmin.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password,
+      });
+
+    const response = NextResponse.json(
+      {
+        beneficiario_id: beneficiarioId,
         numero_cartao: numeroCartao,
-        message: 'Conta criada com sucesso!'
+        access_token: signInData?.session?.access_token || null,
+        refresh_token: signInData?.session?.refresh_token || null,
+        message: signInError ? 'Conta criada! Faça login para continuar.' : 'Conta criada com sucesso!',
       },
       { status: 201 }
     );
 
+    if (signInData?.session) {
+      const isProd = process.env.NODE_ENV === 'production';
+
+      response.cookies.set('sb-access-token', signInData.session.access_token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        maxAge: 3600,
+        path: '/',
+      });
+
+      response.cookies.set('sb-refresh-token', signInData.session.refresh_token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        maxAge: 604800,
+        path: '/',
+      });
+    }
+
+    return response;
   } catch (error: any) {
     console.error('Erro cadastro:', error);
-    return NextResponse.json(
-      { message: 'Erro interno. Tente novamente em alguns instantes.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Erro interno. Tente novamente.' }, { status: 500 });
   }
 }
