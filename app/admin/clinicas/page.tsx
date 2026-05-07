@@ -1,90 +1,224 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Star, Building2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Plus, Edit, Trash2, Building2, Upload, X, Image as ImageIcon } from 'lucide-react';
+
+interface Especialidade {
+  id: string;
+  nome: string;
+  icone_emoji: string;
+}
 
 interface Clinica {
   id: string;
-  nome: string;
-  especialidade: string;
-  profissional: string;
+  nome_clinica: string;
+  nome_profissional: string;
+  especialidade_id: string;
+  especialidade_nome: string;
+  especialidade_icone: string;
+  registro_profissional: string;
+  foto_url: string;
+  endereco: string;
+  bairro: string;
   cidade: string;
-  telefone: string;
-  ativa: boolean;
-  created_at: string;
+  whatsapp: string;
+  horario: string;
+  avaliacao: number;
+  total_agendamentos: number;
+  ativo: boolean;
+  criado_em: string;
 }
+
+const emptyForm = {
+  nome_clinica: '',
+  nome_profissional: '',
+  especialidade_id: '',
+  registro_profissional: '',
+  foto_url: '',
+  endereco: '',
+  bairro: '',
+  cidade: '',
+  whatsapp: '',
+  horario: '',
+  ativo: true,
+};
 
 export default function ClinicasAdmin() {
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
+  const [especialidades, setEspecialidades] = useState<Especialidade[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Clinica | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    nome: '',
-    especialidade: '',
-    profissional: '',
-    cidade: '',
-    telefone: '',
-  });
+  const [error, setError] = useState('');
+  const [form, setForm] = useState(emptyForm);
+  const [logoPreview, setLogoPreview] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const getAuthHeaders = () => {
+    const token = document.cookie
+      .split('; ')
+      .find((c) => c.startsWith('sb-access-token='))
+      ?.split('=')[1];
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/clinicas');
-      if (res.ok) setClinicas(await res.json());
-    } catch {} finally {
+      const [resClinicas, resEsp] = await Promise.all([
+        fetch('/api/admin/clinicas', { headers: getAuthHeaders() }),
+        fetch('/api/admin/especialidades', { headers: getAuthHeaders() }),
+      ]);
+      if (resClinicas.ok) setClinicas(await resClinicas.json());
+      if (resEsp.ok) setEspecialidades(await resEsp.json());
+    } catch (e) {
+      console.error('Erro ao carregar:', e);
+    } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ nome: '', especialidade: '', profissional: '', cidade: '', telefone: '' });
+    setForm(emptyForm);
+    setLogoPreview('');
+    setError('');
     setShowModal(true);
   };
 
   const openEdit = (c: Clinica) => {
     setEditing(c);
     setForm({
-      nome: c.nome,
-      especialidade: c.especialidade || '',
-      profissional: c.profissional || '',
+      nome_clinica: c.nome_clinica || '',
+      nome_profissional: c.nome_profissional || '',
+      especialidade_id: c.especialidade_id || '',
+      registro_profissional: c.registro_profissional || '',
+      foto_url: c.foto_url || '',
+      endereco: c.endereco || '',
+      bairro: c.bairro || '',
       cidade: c.cidade || '',
-      telefone: c.telefone || '',
+      whatsapp: c.whatsapp || '',
+      horario: c.horario || '',
+      ativo: c.ativo,
     });
+    setLogoPreview(c.foto_url || '');
+    setError('');
     setShowModal(true);
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo muito grande. Máximo 2MB.');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Envie apenas imagens.');
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+
+    try {
+      const preview = URL.createObjectURL(file);
+      setLogoPreview(preview);
+
+      const formData = new FormData();
+      formData.append('logo', file);
+      if (editing?.id) formData.append('clinica_id', editing.id);
+
+      const res = await fetch('/api/admin/clinicas/upload-logo', {
+        method: 'POST',
+        headers: {
+          ...(document.cookie.split('; ').find((c) => c.startsWith('sb-access-token='))
+            ? { Authorization: `Bearer ${document.cookie.split('; ').find((c) => c.startsWith('sb-access-token='))!.split('=')[1]}` }
+            : {}),
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setForm((prev) => ({ ...prev, foto_url: data.url }));
+      } else {
+        setError(data.message || 'Erro ao fazer upload');
+        setLogoPreview('');
+      }
+    } catch {
+      setError('Erro ao enviar logo');
+      setLogoPreview('');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeLogo = () => {
+    setForm((prev) => ({ ...prev, foto_url: '' }));
+    setLogoPreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSave = async () => {
-    if (!form.nome.trim()) return;
+    if (!form.nome_clinica.trim()) {
+      setError('Nome da clínica é obrigatório');
+      return;
+    }
+    if (!form.especialidade_id) {
+      setError('Selecione uma especialidade');
+      return;
+    }
+    if (!form.cidade.trim()) {
+      setError('Cidade é obrigatória');
+      return;
+    }
+
     setSaving(true);
+    setError('');
+
     try {
       if (editing) {
         const res = await fetch(`/api/admin/clinicas/${editing.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify(form),
         });
         if (res.ok) {
-          const updated = await res.json();
-          setClinicas((prev) => prev.map((c) => (c.id === editing.id ? updated : c)));
+          await load();
+          setShowModal(false);
+        } else {
+          const err = await res.json();
+          setError(err.detail || err.message || 'Erro ao atualizar');
         }
       } else {
         const res = await fetch('/api/admin/clinicas', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify(form),
         });
         if (res.ok) {
-          const created = await res.json();
-          setClinicas((prev) => [...prev, created]);
+          await load();
+          setShowModal(false);
+        } else {
+          const err = await res.json();
+          setError(err.detail || err.message || 'Erro ao criar');
         }
       }
-      setShowModal(false);
-    } catch {} finally {
+    } catch {
+      setError('Erro de conexão');
+    } finally {
       setSaving(false);
     }
   };
@@ -92,9 +226,27 @@ export default function ClinicasAdmin() {
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta clínica?')) return;
     try {
-      const res = await fetch(`/api/admin/clinicas/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/clinicas/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         setClinicas((prev) => prev.filter((c) => c.id !== id));
+      }
+    } catch {}
+  };
+
+  const toggleAtivo = async (c: Clinica) => {
+    try {
+      const res = await fetch(`/api/admin/clinicas/${c.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ativo: !c.ativo }),
+      });
+      if (res.ok) {
+        setClinicas((prev) =>
+          prev.map((item) => (item.id === c.id ? { ...item, ativo: !c.ativo } : item))
+        );
       }
     } catch {}
   };
@@ -109,7 +261,11 @@ export default function ClinicasAdmin() {
 
   return (
     <>
-      <div className="flex justify-end mb-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0a2a5e]">Clínicas & Parceiros</h1>
+          <p className="text-sm text-gray-500">{clinicas.length} cadastrada{clinicas.length !== 1 ? 's' : ''}</p>
+        </div>
         <button
           onClick={openCreate}
           className="px-6 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-xl font-bold hover:bg-[#f0b820] transition flex items-center gap-2"
@@ -124,34 +280,64 @@ export default function ClinicasAdmin() {
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center text-gray-500">
             <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <p>Nenhuma clínica cadastrada</p>
+            <p className="text-sm mt-1">Clique em &quot;Nova Clínica&quot; para começar</p>
           </div>
         ) : (
           clinicas.map((clinic) => (
             <div key={clinic.id} className="bg-white rounded-2xl border border-gray-200 p-6 hover:border-[#f5c842] transition">
               <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-[#0a2a5e]">{clinic.nome}</h3>
-                  <p className="text-sm text-gray-600">
-                    {clinic.especialidade}{clinic.profissional ? ` • ${clinic.profissional}` : ''}
-                  </p>
+                <div className="flex items-center gap-3 flex-1">
+                  {clinic.foto_url ? (
+                    <img
+                      src={clinic.foto_url}
+                      alt={clinic.nome_clinica}
+                      className="w-12 h-12 rounded-xl object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-[#0a2a5e]/10 flex items-center justify-center">
+                      <Building2 className="w-6 h-6 text-[#0a2a5e]" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-[#0a2a5e]">{clinic.nome_clinica}</h3>
+                    <p className="text-sm text-gray-600">
+                      {clinic.especialidade_icone} {clinic.especialidade_nome}
+                      {clinic.nome_profissional ? ` • ${clinic.nome_profissional}` : ''}
+                    </p>
+                  </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  clinic.ativa ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {clinic.ativa ? 'Ativa' : 'Inativa'}
-                </span>
+                <button
+                  onClick={() => toggleAtivo(clinic)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer ${
+                    clinic.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}
+                >
+                  {clinic.ativo ? 'Ativa' : 'Inativa'}
+                </button>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4 mb-4 pb-4 border-b border-gray-200">
+              <div className="grid md:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-200">
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Cidade</p>
+                  <p className="text-xs text-gray-500 mb-1">Cidade</p>
                   <p className="font-semibold text-[#0a2a5e]">{clinic.cidade || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Telefone</p>
-                  <p className="font-mono text-sm font-semibold text-[#0a2a5e]">{clinic.telefone || '—'}</p>
+                  <p className="text-xs text-gray-500 mb-1">Bairro</p>
+                  <p className="font-semibold text-[#0a2a5e]">{clinic.bairro || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">WhatsApp</p>
+                  <p className="font-mono text-sm font-semibold text-[#0a2a5e]">{clinic.whatsapp || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Horário</p>
+                  <p className="font-semibold text-[#0a2a5e]">{clinic.horario || '—'}</p>
                 </div>
               </div>
+
+              {clinic.endereco && (
+                <p className="text-sm text-gray-500 mb-4">{clinic.endereco}</p>
+              )}
 
               <div className="flex gap-2 justify-end">
                 <button
@@ -174,46 +360,141 @@ export default function ClinicasAdmin() {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-[#0a2a5e] mb-4">
               {editing ? 'Editar Clínica' : 'Nova Clínica'}
             </h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-4">
+              {/* Logo Upload */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Nome</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Logo / Foto</label>
+                <div className="flex items-center gap-4">
+                  {logoPreview ? (
+                    <div className="relative">
+                      <img
+                        src={logoPreview}
+                        alt="Preview"
+                        className="w-20 h-20 rounded-xl object-cover border-2 border-gray-200"
+                      />
+                      <button
+                        onClick={removeLogo}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-[#f5c842] transition"
+                    >
+                      <ImageIcon className="w-6 h-6 text-gray-400" />
+                      <span className="text-[10px] text-gray-400 mt-1">Logo</span>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="px-4 py-2 border-2 border-gray-300 text-[#0a2a5e] rounded-lg font-semibold hover:bg-gray-50 transition flex items-center gap-2 text-sm disabled:opacity-50"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {uploading ? 'Enviando...' : 'Selecionar Logo'}
+                    </button>
+                    <p className="text-xs text-gray-400 mt-1">PNG, JPG até 2MB</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nome da Clínica */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Nome da Clínica *
+                </label>
                 <input
                   type="text"
-                  value={form.nome}
-                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  value={form.nome_clinica}
+                  onChange={(e) => setForm({ ...form, nome_clinica: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                  placeholder="Nome da clínica"
+                  placeholder="Ex: Clínica Odonto Vida"
                 />
               </div>
+
+              {/* Profissional + Registro */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Especialidade</label>
-                  <input
-                    type="text"
-                    value={form.especialidade}
-                    onChange={(e) => setForm({ ...form, especialidade: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                    placeholder="Ex: Dentista"
-                  />
-                </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Profissional</label>
                   <input
                     type="text"
-                    value={form.profissional}
-                    onChange={(e) => setForm({ ...form, profissional: e.target.value })}
+                    value={form.nome_profissional}
+                    onChange={(e) => setForm({ ...form, nome_profissional: e.target.value })}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
                     placeholder="Dr(a). Nome"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Registro</label>
+                  <input
+                    type="text"
+                    value={form.registro_profissional}
+                    onChange={(e) => setForm({ ...form, registro_profissional: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    placeholder="CRO-UF 12345"
+                  />
+                </div>
               </div>
+
+              {/* Especialidade */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Especialidade *
+                </label>
+                <select
+                  value={form.especialidade_id}
+                  onChange={(e) => setForm({ ...form, especialidade_id: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none bg-white"
+                >
+                  <option value="">Selecione...</option>
+                  {especialidades.map((esp) => (
+                    <option key={esp.id} value={esp.id}>
+                      {esp.icone_emoji} {esp.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Endereço */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Endereço</label>
+                <input
+                  type="text"
+                  value={form.endereco}
+                  onChange={(e) => setForm({ ...form, endereco: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                  placeholder="Rua, Número - Complemento"
+                />
+              </div>
+
+              {/* Cidade + Bairro */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Cidade</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Cidade *
+                  </label>
                   <input
                     type="text"
                     value={form.cidade}
@@ -223,17 +504,56 @@ export default function ClinicasAdmin() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Telefone</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Bairro</label>
                   <input
                     type="text"
-                    value={form.telefone}
-                    onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                    value={form.bairro}
+                    onChange={(e) => setForm({ ...form, bairro: e.target.value })}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                    placeholder="(93) 3222-0000"
+                    placeholder="Ex: Aldeia"
                   />
                 </div>
               </div>
+
+              {/* WhatsApp + Horário */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">WhatsApp</label>
+                  <input
+                    type="text"
+                    value={form.whatsapp}
+                    onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    placeholder="(93) 99999-0000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Horário</label>
+                  <input
+                    type="text"
+                    value={form.horario}
+                    onChange={(e) => setForm({ ...form, horario: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    placeholder="Seg-Sex 8h-18h"
+                  />
+                </div>
+              </div>
+
+              {/* Ativo */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.ativo}
+                  onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
+                  className="w-4 h-4 accent-[#f5c842]"
+                  id="ativo-check"
+                />
+                <label htmlFor="ativo-check" className="text-sm font-semibold text-gray-700">
+                  Clínica ativa
+                </label>
+              </div>
             </div>
+
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowModal(false)}
@@ -243,7 +563,7 @@ export default function ClinicasAdmin() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving || !form.nome.trim()}
+                disabled={saving || uploading}
                 className="flex-1 px-4 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-xl font-bold hover:bg-[#f0b820] transition disabled:opacity-50"
               >
                 {saving ? 'Salvando...' : 'Salvar'}
