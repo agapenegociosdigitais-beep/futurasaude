@@ -39,9 +39,13 @@ function success(userId: string, email: string | undefined): AuthSuccess {
 
 export function getBearerToken(request: NextRequest): string | null {
   const header = request.headers.get('authorization');
-  if (!header) return null;
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1].trim() : null;
+  if (header) {
+    const match = header.match(/^Bearer\s+(.+)$/i);
+    if (match) return match[1].trim();
+  }
+
+  const cookie = request.cookies.get('sb-access-token')?.value;
+  return cookie || null;
 }
 
 export async function requireUser(request: NextRequest): Promise<AuthResult> {

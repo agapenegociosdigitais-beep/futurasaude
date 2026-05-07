@@ -11,7 +11,9 @@ const supabaseAdmin = createClient(
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    const headerToken = authHeader?.replace('Bearer ', '') || null;
+    const cookieToken = request.cookies.get('sb-access-token')?.value || null;
+    const token = headerToken || cookieToken;
 
     if (!token) {
       return NextResponse.json({ user: null }, { status: 401 });
