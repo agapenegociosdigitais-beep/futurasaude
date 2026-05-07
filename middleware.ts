@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const PUBLIC_ROUTES = ['/', '/login', '/cadastro', '/pagamento', '/admin/login'];
 
@@ -15,10 +20,25 @@ function isStaticOrApi(pathname: string): boolean {
   );
 }
 
+function makeSupabaseAnon() {
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
+
+function makeSupabaseAdmin() {
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isStaticOrApi(pathname)) {
+    return NextResponse.next();
+  }
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('[MW] Variáveis Supabase ausentes');
     return NextResponse.next();
   }
 
@@ -27,24 +47,17 @@ export async function middleware(request: NextRequest) {
 
   if (isPublicRoute(pathname)) {
     if (accessToken && pathname === '/login') {
-            // Validar token antes de redirecionar para evitar loop infinito
-            try {
-                      const { createClient } = await import('@supabase/supabase-js');
-                      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-                      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-                      if (supabaseUrl && supabaseAnonKey) {
-                                  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-                                  const { data: { user }, error } = await supabase.auth.getUser(accessToken);
-                                  if (!error && user) {
-                                                return NextResponse.redirect(new URL('/dashboard', request.url));
-                                  }
-                      }
-            } catch {}
-            // Token inválido — limpar cookie e mostrar o login normalmente
-            const response = NextResponse.next();
-            response.cookies.delete('sb-access-token');
-            response.cookies.delete('sb-refresh-token');
-            return response;
+      try {
+        const supabase = makeSupabaseAnon();
+        const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+        if (!error && user) {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+      } catch {}
+      const response = NextResponse.next();
+      response.cookies.delete('sb-access-token');
+      response.cookies.delete('sb-refresh-token');
+      return response;
     }
     if (accessToken && pathname === '/admin/login') {
       return NextResponse.redirect(new URL('/admin', request.url));
@@ -67,23 +80,7 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('[MW] Variáveis Supabase ausentes');
-      const loginUrl = pathname.startsWith('/admin')
-        ? new URL('/admin/login', request.url)
-        : new URL('/login', request.url);
-      const redirect = NextResponse.redirect(loginUrl);
-      redirect.cookies.delete('sb-access-token');
-      redirect.cookies.delete('sb-refresh-token');
-      return redirect;
-    }
-
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+    const supabase = makeSupabaseAnon();
     const { data: { user }, error } = await supabase.auth.getUser(accessToken);
 
     if (error || !user) {
@@ -127,8 +124,9 @@ export async function middleware(request: NextRequest) {
       return redirect;
     }
 
-    if (pathname.startsWith('/admin')) {
-      const { data: perfil, error: perfilError } = await supabase
+    if (pathname.startsWith('/admin') && supabaseServiceKey) {
+      const adminClient = makeSupabaseAdmin();
+      const { data: perfil, error: perfilError } = await adminClient
         .from('perfis')
         .select('tipo')
         .eq('id', user.id)
