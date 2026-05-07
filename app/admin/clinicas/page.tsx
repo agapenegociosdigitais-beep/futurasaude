@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Edit, Trash2, Building2, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Building2, Upload, X, Image as ImageIcon, MapPin, Loader2 } from 'lucide-react';
 
 interface Especialidade {
   id: string;
@@ -55,6 +55,12 @@ export default function ClinicasAdmin() {
   const [logoPreview, setLogoPreview] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importEspId, setImportEspId] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [importPreview, setImportPreview] = useState<any>(null);
 
   const getAuthHeaders = () => {
     const token = document.cookie
@@ -171,6 +177,66 @@ export default function ClinicasAdmin() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleImport = async () => {
+    if (!importUrl.trim()) {
+      setImportError('Cole o link do Google Maps');
+      return;
+    }
+    if (!importEspId) {
+      setImportError('Selecione a especialidade');
+      return;
+    }
+
+    setImporting(true);
+    setImportError('');
+    setImportPreview(null);
+
+    try {
+      const res = await fetch('/api/admin/clinicas/import-google', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ url: importUrl, especialidade_id: importEspId }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setImportPreview(data.data);
+      } else {
+        setImportError(data.message || 'Erro ao importar dados');
+      }
+    } catch {
+      setImportError('Erro de conexão ao importar');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const confirmImport = () => {
+    if (!importPreview) return;
+    setForm({
+      nome_clinica: importPreview.nome || '',
+      nome_profissional: '',
+      especialidade_id: importEspId,
+      registro_profissional: '',
+      foto_url: importPreview.foto_url || '',
+      endereco: importPreview.endereco || '',
+      bairro: importPreview.bairro || '',
+      cidade: importPreview.cidade || '',
+      whatsapp: importPreview.telefone || '',
+      horario: importPreview.horario || '',
+      ativo: true,
+    });
+    if (importPreview.foto_url) {
+      setLogoPreview(importPreview.foto_url);
+    }
+    setShowImport(false);
+    setImportUrl('');
+    setImportEspId('');
+    setImportPreview(null);
+    setImportError('');
+    setShowModal(true);
+  };
+
   const handleSave = async () => {
     if (!form.nome_clinica.trim()) {
       setError('Nome da clínica é obrigatório');
@@ -266,13 +332,22 @@ export default function ClinicasAdmin() {
           <h1 className="text-2xl font-bold text-[#0a2a5e]">Clínicas & Parceiros</h1>
           <p className="text-sm text-gray-500">{clinicas.length} cadastrada{clinicas.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="px-6 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-xl font-bold hover:bg-[#f0b820] transition flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Nova Clínica
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowImport(true)}
+            className="px-6 py-3 border-2 border-[#0a2a5e] text-[#0a2a5e] rounded-xl font-bold hover:bg-[#0a2a5e]/5 transition flex items-center gap-2"
+          >
+            <MapPin className="w-5 h-5" />
+            Importar do Google
+          </button>
+          <button
+            onClick={openCreate}
+            className="px-6 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-xl font-bold hover:bg-[#f0b820] transition flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Nova Clínica
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -569,6 +644,157 @@ export default function ClinicasAdmin() {
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Importar do Google */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-[#0a2a5e] flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                Importar do Google Maps
+              </h2>
+              <button
+                onClick={() => { setShowImport(false); setImportPreview(null); setImportError(''); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {importError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                {importError}
+              </div>
+            )}
+
+            {!importPreview ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Link do Google Maps ou Meu Negócio *
+                  </label>
+                  <input
+                    type="url"
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    placeholder="https://maps.google.com/... ou https://share.google/..."
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Cole o link completo do estabelecimento no Google Maps
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Especialidade *
+                  </label>
+                  <select
+                    value={importEspId}
+                    onChange={(e) => setImportEspId(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none bg-white"
+                  >
+                    <option value="">Selecione...</option>
+                    {especialidades.map((esp) => (
+                      <option key={esp.id} value={esp.id}>
+                        {esp.icone_emoji} {esp.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleImport}
+                  disabled={importing}
+                  className="w-full px-4 py-3 bg-[#0a2a5e] text-white rounded-xl font-bold hover:bg-[#0a2a5e]/90 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {importing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Importando dados...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-5 h-5" />
+                      Buscar Dados
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <p className="text-sm text-green-700 font-semibold mb-2">Dados encontrados:</p>
+                  <div className="space-y-2">
+                    {importPreview.nome && (
+                      <div className="flex gap-2">
+                        <span className="text-xs text-gray-500 w-20">Nome:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{importPreview.nome}</span>
+                      </div>
+                    )}
+                    {importPreview.telefone && (
+                      <div className="flex gap-2">
+                        <span className="text-xs text-gray-500 w-20">Telefone:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{importPreview.telefone}</span>
+                      </div>
+                    )}
+                    {importPreview.endereco && (
+                      <div className="flex gap-2">
+                        <span className="text-xs text-gray-500 w-20">Endereço:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{importPreview.endereco}</span>
+                      </div>
+                    )}
+                    {importPreview.cidade && (
+                      <div className="flex gap-2">
+                        <span className="text-xs text-gray-500 w-20">Cidade:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{importPreview.cidade}</span>
+                      </div>
+                    )}
+                    {importPreview.bairro && (
+                      <div className="flex gap-2">
+                        <span className="text-xs text-gray-500 w-20">Bairro:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{importPreview.bairro}</span>
+                      </div>
+                    )}
+                    {importPreview.horario && (
+                      <div className="flex gap-2">
+                        <span className="text-xs text-gray-500 w-20">Horário:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{importPreview.horario}</span>
+                      </div>
+                    )}
+                    {importPreview.avaliacao > 0 && (
+                      <div className="flex gap-2">
+                        <span className="text-xs text-gray-500 w-20">Avaliação:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{'⭐'.repeat(Math.round(importPreview.avaliacao))} {importPreview.avaliacao}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Os dados serão preenchidos automaticamente no formulário. Você pode editar antes de salvar.
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setImportPreview(null); setImportError(''); }}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 text-[#0a2a5e] rounded-xl font-semibold hover:bg-gray-50 transition"
+                  >
+                    Buscar Outro
+                  </button>
+                  <button
+                    onClick={confirmImport}
+                    className="flex-1 px-4 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-xl font-bold hover:bg-[#f0b820] transition"
+                  >
+                    Confirmar e Editar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
