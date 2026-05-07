@@ -2,49 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/auth';
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const auth = await requireAdmin(request);
-    if (!auth.ok) return auth.response;
-
-    const { id } = await Promise.resolve(params);
-    const body = await request.json();
-    const { status } = body;
-
-    if (!status) {
-      return NextResponse.json(
-        { message: 'Status é obrigatório' },
-        { status: 400 }
-      );
-    }
-
-    const { error } = await supabaseAdmin
-      .from('beneficiarios')
-      .update({ status })
-      .eq('id', id);
-
-    if (error) {
-      return NextResponse.json(
-        { message: 'Erro ao atualizar status' },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: 'Status atualizado com sucesso' },
-      { status: 200 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { message: 'Erro interno do servidor' },
-      { status: 500 }
-    );
-  }
-}
-
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -57,7 +14,7 @@ export async function PUT(
     const body = await request.json();
 
     const { data, error } = await supabaseAdmin
-      .from('beneficiarios')
+      .from('clinicas')
       .update(body)
       .eq('id', id)
       .select()
@@ -65,7 +22,7 @@ export async function PUT(
 
     if (error) {
       return NextResponse.json(
-        { message: 'Erro ao atualizar beneficiário' },
+        { message: 'Erro ao atualizar clínica' },
         { status: 400 }
       );
     }
@@ -90,19 +47,19 @@ export async function DELETE(
     const { id } = await Promise.resolve(params);
 
     const { error } = await supabaseAdmin
-      .from('beneficiarios')
+      .from('clinicas')
       .delete()
       .eq('id', id);
 
     if (error) {
       return NextResponse.json(
-        { message: 'Erro ao deletar beneficiário' },
+        { message: 'Erro ao deletar clínica' },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { message: 'Beneficiário deletado com sucesso' },
+      { message: 'Clínica deletada com sucesso' },
       { status: 200 }
     );
   } catch (error) {

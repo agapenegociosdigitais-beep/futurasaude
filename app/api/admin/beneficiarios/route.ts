@@ -31,3 +31,32 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
+    const body = await request.json();
+
+    const { data, error } = await supabaseAdmin
+      .from('beneficiarios')
+      .insert(body)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json(
+        { message: 'Erro ao criar beneficiário' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(data, { status: 201 });
+  } catch (error) {
+    return NextResponse.json(
+      { message: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
