@@ -1,52 +1,94 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from 'react';
+import { Users, Building2, Trophy, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function AdminPage() {
-  const [currentTab, setCurrentTab] = useState("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [stats, setStats] = useState({
+    totalBeneficiarios: 0,
+    ativos: 0,
+    pendentes: 0,
+    receitaMes: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch {} finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
+  }, []);
 
   return (
     <>
-      <style>{`
-        :root { --azul: #0a2a5e; --dourado: #f5c842; --cinza: #8a8070; --sidebar-w: 260px; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Sora, sans-serif; display: flex; min-height: 100vh; }
-        .sidebar { width: var(--sidebar-w); background: var(--azul); flex-direction: column; position: fixed; height: 100vh; transition: transform 0.3s; }
-        .sidebar.fechada { transform: translateX(-100%); }
-        .nome { font-size: 16px; font-weight: 800; color: white; }
-        .nome span { color: var(--dourado); }
-        .nav-link { padding: 12px 20px; color: rgba(255,255,255,0.6); cursor: pointer; border-left: 3px solid transparent; background: none; border: none; width: 100%; text-align: left; }
-        .nav-link.ativo { background: rgba(245,200,66,0.1); color: var(--dourado); border-left-color: var(--dourado); }
-        .admin-main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
-        .admin-header { background: white; padding: 16px 28px; display: flex; justify-content: space-between; border-bottom: 1px solid #e8e4de; }
-        .admin-content { padding: 28px; flex: 1; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 16px; }
-        th { background: #f8f6f2; padding: 14px 16px; text-align: left; font-size: 12px; font-weight: 700; color: var(--azul); border-bottom: 1px solid #e8e4de; }
-        td { padding: 14px 16px; border-bottom: 1px solid #f0eeea; font-size: 13px; }
-      `}</style>
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="w-8 h-8 border-[3px] border-[#0a2a5e] border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            <StatCard label="Total Beneficiários" value={stats.totalBeneficiarios} color="blue" />
+            <StatCard label="Ativos" value={stats.ativos} color="green" />
+            <StatCard label="Pendentes" value={stats.pendentes} color="yellow" />
+            <StatCard label="Receita Mês" value={`R$ ${stats.receitaMes.toLocaleString('pt-BR')}`} color="gold" />
+          </div>
 
-      <div style={{ display: "flex", minHeight: "100vh" }}>
-        <div style={{ width: "260px", background: "var(--azul)", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "24px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="nome">FUTURA<span>SAUDE</span></div>
-            <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.45)", marginTop: "3px" }}>Admin</div>
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+            <h2 className="text-lg font-bold text-[#0a2a5e] mb-4">Ações Rápidas</h2>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <QuickAction icon={Users} label="Novo Beneficiário" href="/admin/beneficiarios" />
+              <QuickAction icon={Building2} label="Nova Clínica" href="/admin/clinicas" />
+              <QuickAction icon={Trophy} label="Novo Sorteio" href="/admin/sorteio" />
+            </div>
           </div>
-          <nav style={{ flex: 1, padding: "16px 0" }}>
-            <button className={`nav-link ${currentTab === "dashboard" ? "ativo" : ""}`} onClick={() => setCurrentTab("dashboard")}>D</button>
-            <button className={`nav-link ${currentTab === "usuarios" ? "ativo" : ""}`} onClick={() => setCurrentTab("usuarios")}>U</button>
-          </nav>
-        </div>
-        <div className="admin-main">
-          <div className="admin-header">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>M</button>
-            <span style={{ fontWeight: "700", color: "var(--azul)" }}>Admin Dashboard</span>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-lg font-bold text-[#0a2a5e] mb-4">Atividade Recente</h2>
+            <p className="text-gray-500 text-sm">Nenhuma atividade registrada ainda.</p>
           </div>
-          <div className="admin-content">
-            <table><thead><tr><th>Nome</th><th>Email</th></tr></thead><tbody><tr><td>User1</td><td>u1@mail.com</td></tr></tbody></table>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </>
+  );
+}
+
+function StatCard({ label, value, color }: { label: string; value: number | string; color: 'blue' | 'green' | 'yellow' | 'gold' }) {
+  const styles = {
+    blue: 'bg-blue-50 border-blue-200 text-blue-700',
+    green: 'bg-green-50 border-green-200 text-green-700',
+    yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+    gold: 'bg-[#f5c842]/10 border-[#f5c842]/40 text-[#0a2a5e]',
+  };
+
+  return (
+    <div className={`rounded-2xl border-2 p-5 ${styles[color]}`}>
+      <p className="text-sm font-semibold mb-1">{label}</p>
+      <p className="text-3xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function QuickAction({ icon: Icon, label, href }: { icon: React.ComponentType<{ className?: string }>; label: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 hover:border-[#f5c842] hover:bg-[#f5c842]/5 transition group"
+    >
+      <div className="w-10 h-10 bg-[#0a2a5e] rounded-lg flex items-center justify-center group-hover:bg-[#f5c842] transition">
+        <Icon className="w-5 h-5 text-white group-hover:text-[#0a2a5e]" />
+      </div>
+      <span className="text-sm font-semibold text-[#0a2a5e]">{label}</span>
+      <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
+    </Link>
   );
 }

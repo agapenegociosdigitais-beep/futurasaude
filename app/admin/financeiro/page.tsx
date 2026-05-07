@@ -1,128 +1,67 @@
 'use client';
 
-import Link from 'next/link';
-import { ArrowLeft, Download, Filter, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 
 export default function FinanceiroAdmin() {
+  const [transactions] = useState([
+    { id: 1, description: 'Mensalidade - João Silva', value: 5000, status: 'Sucesso', method: 'Cartão de Crédito', date: '2025-04-02', type: 'receita' },
+    { id: 2, description: 'Pagamento Clínica Sorriso', value: -2200, status: 'Sucesso', method: 'Transferência', date: '2025-04-05', type: 'despesa' },
+    { id: 3, description: 'Mensalidade - Maria Oliveira', value: 3200, status: 'Pendente', method: 'PIX', date: '2025-04-08', type: 'receita' },
+  ]);
+
+  const receitas = transactions.filter((t) => t.value > 0).reduce((s, t) => s + t.value, 0);
+  const despesas = transactions.filter((t) => t.value < 0).reduce((s, t) => s + Math.abs(t.value), 0);
+  const saldo = receitas - despesas;
+
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <Link href="/admin" className="flex items-center gap-2 text-[#0a2a5e] font-semibold mb-8 hover:underline">
-        <ArrowLeft className="w-5 h-5" />
-        Voltar
-      </Link>
-
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-[#0a2a5e] mb-8 font-lora">
-          Relatório Financeiro
-        </h1>
-
-        {/* KPIs */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          {[
-            { label: 'Receita Total', value: 'R$ 283.650', change: '+15%' },
-            { label: 'Pagamentos Processados', value: '2.847', change: '+12%' },
-            { label: 'Valor Médio', value: 'R$ 99,71', change: '+2%' },
-            { label: 'Taxa de Sucesso', value: '98.2%', change: '+0.8%' },
-          ].map((kpi, i) => (
-            <div key={i} className="bg-white rounded-xl border-2 border-gray-300 p-6">
-              <p className="text-gray-600 text-sm mb-2">{kpi.label}</p>
-              <p className="text-2xl font-bold text-[#0a2a5e] mb-2">{kpi.value}</p>
-              <p className="text-xs text-green-600 font-semibold">{kpi.change}</p>
-            </div>
-          ))}
+    <>
+      <div className="grid sm:grid-cols-3 gap-5 mb-8">
+        <div className="bg-green-50 rounded-2xl border-2 border-green-200 p-6">
+          <p className="text-green-700 font-semibold mb-2">Receitas</p>
+          <p className="text-3xl font-bold text-[#0a2a5e]">R$ {receitas.toLocaleString('pt-BR')}</p>
         </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-xl border-2 border-gray-300 p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
-            <input
-              type="date"
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-            />
-            <input
-              type="date"
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-            />
-            <button className="px-6 py-3 border-2 border-gray-300 text-[#0a2a5e] rounded-lg font-semibold hover:bg-gray-50 transition flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              Filtrar
-            </button>
-            <button className="px-6 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-lg font-semibold hover:bg-[#f0b820] transition flex items-center gap-2">
-              <Download className="w-5 h-5" />
-              Exportar
-            </button>
-          </div>
+        <div className="bg-red-50 rounded-2xl border-2 border-red-200 p-6">
+          <p className="text-red-700 font-semibold mb-2">Despesas</p>
+          <p className="text-3xl font-bold text-[#0a2a5e]">R$ {despesas.toLocaleString('pt-BR')}</p>
         </div>
-
-        {/* Transactions */}
-        <div className="bg-white rounded-xl border-2 border-gray-300 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b-2 border-gray-300">
-                <tr>
-                  <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Data</th>
-                  <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Beneficiário</th>
-                  <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Método</th>
-                  <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Gateway</th>
-                  <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Valor</th>
-                  <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  {
-                    date: '18/04/2025',
-                    beneficiary: 'João Silva',
-                    method: 'PIX',
-                    gateway: 'Asaas',
-                    value: 'R$ 99,90',
-                    status: 'Pago',
-                  },
-                  {
-                    date: '18/04/2025',
-                    beneficiary: 'Maria Santos',
-                    method: 'Cartão',
-                    gateway: 'MercadoPago',
-                    value: 'R$ 99,90',
-                    status: 'Pago',
-                  },
-                  {
-                    date: '17/04/2025',
-                    beneficiary: 'Carlos Costa',
-                    method: 'PIX',
-                    gateway: 'Asaas',
-                    value: 'R$ 99,90',
-                    status: 'Pendente',
-                  },
-                ].map((tx, i) => (
-                  <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-6 py-4 text-gray-700">{tx.date}</td>
-                    <td className="px-6 py-4 font-semibold text-[#0a2a5e]">{tx.beneficiary}</td>
-                    <td className="px-6 py-4 text-gray-700">
-                      <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-                        {tx.method}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-700 text-sm">{tx.gateway}</td>
-                    <td className="px-6 py-4 font-bold text-[#0a2a5e]">{tx.value}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          tx.status === 'Pago'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}
-                      >
-                        {tx.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className={`rounded-2xl border-2 p-6 ${saldo >= 0 ? 'bg-[#f5c842]/10 border-[#f5c842]/40' : 'bg-red-50 border-red-200'}`}>
+          <p className={`font-semibold mb-2 ${saldo >= 0 ? 'text-[#0a2a5e]' : 'text-red-700'}`}>Saldo</p>
+          <p className="text-3xl font-bold text-[#0a2a5e]">R$ {saldo.toLocaleString('pt-BR')}</p>
         </div>
       </div>
-    </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b-2 border-gray-200">
+              <tr>
+                <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Descrição</th>
+                <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Valor</th>
+                <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Método</th>
+                <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Data</th>
+                <th className="px-6 py-4 text-left font-bold text-[#0a2a5e]">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((t) => (
+                <tr key={t.id} className="border-b border-gray-200 hover:bg-gray-50">
+                  <td className="px-6 py-4 font-semibold text-[#0a2a5e]">{t.description}</td>
+                  <td className={`px-6 py-4 font-mono font-bold ${t.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {t.value >= 0 ? '+' : ''}R$ {Math.abs(t.value).toLocaleString('pt-BR')}
+                  </td>
+                  <td className="px-6 py-4 text-gray-700 text-sm">{t.method}</td>
+                  <td className="px-6 py-4 text-gray-700 text-sm">{t.date}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${t.status === 'Sucesso' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {t.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }
