@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Save, CheckCircle, Settings } from 'lucide-react';
+import { Save, CheckCircle, Settings, AlertCircle } from 'lucide-react';
 
 interface ConfigItem {
   id: string;
@@ -15,6 +15,7 @@ export default function ConfiguracoesAdmin() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   const [form, setForm] = useState({
     nomeEmpresa: 'Futura Saúde',
@@ -51,8 +52,12 @@ export default function ConfiguracoesAdmin() {
           emailNotificacao: map.email_notificacao ?? prev.emailNotificacao,
           smsNotificacao: map.sms_notificacao ?? prev.smsNotificacao,
         }));
+      } else {
+        setError('Erro ao carregar configurações');
       }
-    } catch {} finally {
+    } catch {
+      setError('Erro de conexão ao carregar configurações');
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -62,6 +67,15 @@ export default function ConfiguracoesAdmin() {
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
+    setError('');
+
+    const valorNum = parseFloat(form.valorMensalidade);
+    if (isNaN(valorNum) || valorNum < 0) {
+      setError('Valor da mensalidade deve ser um número positivo');
+      setSaving(false);
+      return;
+    }
+
     try {
       const entries = [
         { chave: 'nome_empresa', valor: form.nomeEmpresa },
@@ -76,7 +90,7 @@ export default function ConfiguracoesAdmin() {
         { chave: 'sms_notificacao', valor: form.smsNotificacao },
       ];
 
-      await Promise.all(
+      const results = await Promise.allSettled(
         entries.map((e) =>
           fetch('/api/admin/configuracoes', {
             method: 'PUT',
@@ -86,9 +100,16 @@ export default function ConfiguracoesAdmin() {
         )
       );
 
+      const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok));
+      if (failed.length > 0) {
+        setError(`${failed.length} configuração(ões) falharam ao salvar`);
+      }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch {} finally {
+    } catch {
+      setError('Erro ao salvar configurações');
+    } finally {
       setSaving(false);
     }
   };
@@ -108,6 +129,13 @@ export default function ConfiguracoesAdmin() {
 
   return (
     <>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex justify-between items-center">
+          <span className="flex items-center gap-2"><AlertCircle className="w-4 h-4" />{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-bold text-[#0a2a5e] mb-4 flex items-center gap-2">
           <Settings className="w-5 h-5" />
@@ -192,8 +220,11 @@ export default function ConfiguracoesAdmin() {
               type="text"
               value={form.valorMensalidade}
               onChange={(e) => setForm({ ...form, valorMensalidade: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+              className={`w-full px-4 py-3 border-2 ${isNaN(parseFloat(form.valorMensalidade)) ? 'border-red-400' : 'border-gray-300'} rounded-lg focus:border-[#f5c842] focus:outline-none`}
             />
+            {isNaN(parseFloat(form.valorMensalidade)) && (
+              <p className="text-xs text-red-500 mt-1">Valor inválido</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">WhatsApp da Empresa</label>
@@ -225,7 +256,7 @@ export default function ConfiguracoesAdmin() {
           <Save className="w-5 h-5" />
           {saving ? 'Salvando...' : 'Salvar Configurações'}
         </button>
-        {saved && (
+        {saved && !error && (
           <span className="flex items-center gap-2 text-green-600 font-semibold text-sm">
             <CheckCircle className="w-5 h-5" />
             Salvo com sucesso!

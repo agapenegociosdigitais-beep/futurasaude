@@ -61,6 +61,9 @@ export default function ClinicasAdmin() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [importPreview, setImportPreview] = useState<any>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const blobUrlRef = useRef<string>('');
 
   const getAuthHeaders = () => {
     const token = document.cookie
@@ -80,10 +83,16 @@ export default function ClinicasAdmin() {
         fetch('/api/admin/clinicas', { headers: getAuthHeaders() }),
         fetch('/api/admin/especialidades', { headers: getAuthHeaders() }),
       ]);
-      if (resClinicas.ok) setClinicas(await resClinicas.json());
-      if (resEsp.ok) setEspecialidades(await resEsp.json());
-    } catch (e) {
-      console.error('Erro ao carregar:', e);
+      if (resClinicas.ok) {
+        setClinicas(await resClinicas.json());
+      } else {
+        setError('Erro ao carregar clínicas');
+      }
+      if (resEsp.ok) {
+        setEspecialidades(await resEsp.json());
+      }
+    } catch {
+      setError('Erro de conexão ao carregar dados');
     } finally {
       setLoading(false);
     }
@@ -93,11 +102,19 @@ export default function ClinicasAdmin() {
     load();
   }, [load]);
 
+  const revokeBlobUrl = useCallback(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = '';
+    }
+  }, []);
+
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
     setLogoPreview('');
     setError('');
+    revokeBlobUrl();
     setShowModal(true);
   };
 
@@ -118,7 +135,13 @@ export default function ClinicasAdmin() {
     });
     setLogoPreview(c.foto_url || '');
     setError('');
+    revokeBlobUrl();
     setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setError('');
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,7 +162,9 @@ export default function ClinicasAdmin() {
     setError('');
 
     try {
+      revokeBlobUrl();
       const preview = URL.createObjectURL(file);
+      blobUrlRef.current = preview;
       setLogoPreview(preview);
 
       const formData = new FormData();
@@ -162,10 +187,12 @@ export default function ClinicasAdmin() {
       } else {
         setError(data.message || 'Erro ao fazer upload');
         setLogoPreview('');
+        revokeBlobUrl();
       }
     } catch {
       setError('Erro ao enviar logo');
       setLogoPreview('');
+      revokeBlobUrl();
     } finally {
       setUploading(false);
     }
@@ -174,6 +201,7 @@ export default function ClinicasAdmin() {
   const removeLogo = () => {
     setForm((prev) => ({ ...prev, foto_url: '' }));
     setLogoPreview('');
+    revokeBlobUrl();
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -291,6 +319,7 @@ export default function ClinicasAdmin() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta clínica?')) return;
+    setDeleting(id);
     try {
       const res = await fetch(`/api/admin/clinicas/${id}`, {
         method: 'DELETE',
@@ -298,23 +327,43 @@ export default function ClinicasAdmin() {
       });
       if (res.ok) {
         setClinicas((prev) => prev.filter((c) => c.id !== id));
+      } else {
+        const err = await res.json();
+        setError(err.message || 'Erro ao deletar clínica');
       }
-    } catch {}
+    } catch {
+      setError('Erro de conexão ao deletar');
+    } finally {
+      setDeleting(null);
+    }
   };
 
   const toggleAtivo = async (c: Clinica) => {
+    const novoAtivo = !c.ativo;
+    setToggling(c.id);
+    setClinicas((prev) =>
+      prev.map((item) => (item.id === c.id ? { ...item, ativo: novoAtivo } : item))
+    );
     try {
       const res = await fetch(`/api/admin/clinicas/${c.id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ ativo: !c.ativo }),
+        body: JSON.stringify({ ativo: novoAtivo }),
       });
-      if (res.ok) {
+      if (!res.ok) {
         setClinicas((prev) =>
-          prev.map((item) => (item.id === c.id ? { ...item, ativo: !c.ativo } : item))
+          prev.map((item) => (item.id === c.id ? { ...item, ativo: c.ativo } : item))
         );
+        setError('Erro ao alterar status da clínica');
       }
-    } catch {}
+    } catch {
+      setClinicas((prev) =>
+        prev.map((item) => (item.id === c.id ? { ...item, ativo: c.ativo } : item))
+      );
+      setError('Erro de conexão ao alterar status');
+    } finally {
+      setToggling(null);
+    }
   };
 
   if (loading) {
@@ -327,6 +376,13 @@ export default function ClinicasAdmin() {
 
   return (
     <>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex justify-between items-center">
+          {error}
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#0a2a5e]">Clínicas & Parceiros</h1>
@@ -383,11 +439,12 @@ export default function ClinicasAdmin() {
                 </div>
                 <button
                   onClick={() => toggleAtivo(clinic)}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer ${
+                  disabled={toggling === clinic.id}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition disabled:opacity-50 ${
                     clinic.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                   }`}
                 >
-                  {clinic.ativo ? 'Ativa' : 'Inativa'}
+                  {toggling === clinic.id ? '...' : clinic.ativo ? 'Ativa' : 'Inativa'}
                 </button>
               </div>
 
@@ -423,9 +480,11 @@ export default function ClinicasAdmin() {
                 </button>
                 <button
                   onClick={() => handleDelete(clinic.id)}
-                  className="px-4 py-2 border-2 border-red-300 text-red-600 rounded-lg font-semibold hover:bg-red-50 transition flex items-center gap-2"
+                  disabled={deleting === clinic.id}
+                  className="px-4 py-2 border-2 border-red-300 text-red-600 rounded-lg font-semibold hover:bg-red-50 transition flex items-center gap-2 disabled:opacity-50"
                 >
-                  <Trash2 className="w-4 h-4" /> Deletar
+                  {deleting === clinic.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  {deleting === clinic.id ? 'Deletando...' : 'Deletar'}
                 </button>
               </div>
             </div>
@@ -447,7 +506,6 @@ export default function ClinicasAdmin() {
             )}
 
             <div className="space-y-4">
-              {/* Logo Upload */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Logo / Foto</label>
                 <div className="flex items-center gap-4">
@@ -495,7 +553,6 @@ export default function ClinicasAdmin() {
                 </div>
               </div>
 
-              {/* Nome da Clínica */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Nome da Clínica *
@@ -509,7 +566,6 @@ export default function ClinicasAdmin() {
                 />
               </div>
 
-              {/* Profissional + Registro */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Profissional</label>
@@ -533,7 +589,6 @@ export default function ClinicasAdmin() {
                 </div>
               </div>
 
-              {/* Especialidade */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Especialidade *
@@ -552,7 +607,6 @@ export default function ClinicasAdmin() {
                 </select>
               </div>
 
-              {/* Endereço */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Endereço</label>
                 <input
@@ -564,7 +618,6 @@ export default function ClinicasAdmin() {
                 />
               </div>
 
-              {/* Cidade + Bairro */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -590,7 +643,6 @@ export default function ClinicasAdmin() {
                 </div>
               </div>
 
-              {/* WhatsApp + Horário */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">WhatsApp</label>
@@ -614,7 +666,6 @@ export default function ClinicasAdmin() {
                 </div>
               </div>
 
-              {/* Ativo */}
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -631,7 +682,7 @@ export default function ClinicasAdmin() {
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 className="flex-1 px-4 py-3 border-2 border-gray-300 text-[#0a2a5e] rounded-xl font-semibold hover:bg-gray-50 transition"
               >
                 Cancelar
@@ -648,7 +699,6 @@ export default function ClinicasAdmin() {
         </div>
       )}
 
-      {/* Modal Importar do Google */}
       {showImport && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg">

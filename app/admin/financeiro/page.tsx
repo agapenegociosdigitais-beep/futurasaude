@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, Filter, Download } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Filter, AlertCircle } from 'lucide-react';
 
 interface Pagamento {
   id: string;
@@ -18,11 +18,13 @@ export default function FinanceiroAdmin() {
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const params = new URLSearchParams();
       if (dataInicio) params.set('data_inicio', dataInicio);
@@ -33,8 +35,13 @@ export default function FinanceiroAdmin() {
         const data = await res.json();
         setPagamentos(data.pagamentos || []);
         setTotal(data.total || 0);
+      } else {
+        const err = await res.json();
+        setError(err.message || 'Erro ao carregar financeiro');
       }
-    } catch {} finally {
+    } catch {
+      setError('Erro de conexão ao carregar financeiro');
+    } finally {
       setLoading(false);
     }
   }, [dataInicio, dataFim]);
@@ -54,6 +61,13 @@ export default function FinanceiroAdmin() {
 
   return (
     <>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex justify-between items-center">
+          <span className="flex items-center gap-2"><AlertCircle className="w-4 h-4" />{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+        </div>
+      )}
+
       <div className="grid sm:grid-cols-3 gap-5 mb-8">
         <div className="bg-green-50 rounded-2xl border-2 border-green-200 p-6">
           <div className="flex items-center gap-2 mb-2">
@@ -143,7 +157,7 @@ export default function FinanceiroAdmin() {
                       {p.beneficiario?.nome_completo || '—'}
                     </td>
                     <td className="px-6 py-4 font-mono font-bold text-green-600">
-                      R$ {parseFloat(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {(parseFloat(p.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 text-gray-700 text-sm">
                       {p.metodo || '—'}

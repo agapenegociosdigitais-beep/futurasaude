@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Plus, Pencil, Trash2, CheckCircle, XCircle, Lock, UserPlus } from 'lucide-react';
+import { Search, Filter, Plus, Pencil, Trash2, CheckCircle, XCircle, Lock, UserPlus, Loader2 } from 'lucide-react';
 
 interface Beneficiario {
   id: string;
@@ -13,6 +13,8 @@ interface Beneficiario {
   created_at: string;
 }
 
+const VALID_STATUSES = ['ativo', 'pendente', 'inativo'];
+
 export default function BeneficiariosAdmin() {
   const [beneficiarios, setBeneficiarios] = useState<Beneficiario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,7 @@ export default function BeneficiariosAdmin() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Beneficiario | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     nome_completo: '',
     cpf: '',
@@ -39,8 +42,12 @@ export default function BeneficiariosAdmin() {
       if (res.ok) {
         const data = await res.json();
         setBeneficiarios(data);
+      } else {
+        setError('Erro ao carregar beneficiários');
       }
-    } catch {} finally {
+    } catch {
+      setError('Erro de conexão ao carregar beneficiários');
+    } finally {
       setLoading(false);
     }
   }, [statusFilter]);
@@ -52,6 +59,7 @@ export default function BeneficiariosAdmin() {
   const openCreate = () => {
     setEditing(null);
     setForm({ nome_completo: '', cpf: '', email: '', telefone: '' });
+    setError('');
     setShowModal(true);
   };
 
@@ -63,12 +71,19 @@ export default function BeneficiariosAdmin() {
       email: b.email || '',
       telefone: b.telefone || '',
     });
+    setError('');
     setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setError('');
   };
 
   const handleSave = async () => {
     if (!form.nome_completo.trim() || !form.cpf.trim()) return;
     setSaving(true);
+    setError('');
     try {
       if (editing) {
         const res = await fetch(`/api/admin/beneficiarios/${editing.id}`, {
@@ -79,6 +94,10 @@ export default function BeneficiariosAdmin() {
         if (res.ok) {
           const updated = await res.json();
           setBeneficiarios((prev) => prev.map((b) => (b.id === editing.id ? updated : b)));
+          setShowModal(false);
+        } else {
+          const err = await res.json();
+          setError(err.message || 'Erro ao atualizar beneficiário');
         }
       } else {
         const res = await fetch('/api/admin/beneficiarios', {
@@ -89,10 +108,15 @@ export default function BeneficiariosAdmin() {
         if (res.ok) {
           const created = await res.json();
           setBeneficiarios((prev) => [...prev, created]);
+          setShowModal(false);
+        } else {
+          const err = await res.json();
+          setError(err.message || 'Erro ao criar beneficiário');
         }
       }
-      setShowModal(false);
-    } catch {} finally {
+    } catch {
+      setError('Erro de conexão');
+    } finally {
       setSaving(false);
     }
   };
@@ -104,8 +128,13 @@ export default function BeneficiariosAdmin() {
       const res = await fetch(`/api/admin/beneficiarios/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setBeneficiarios((prev) => prev.filter((b) => b.id !== id));
+      } else {
+        const err = await res.json();
+        setError(err.message || 'Erro ao excluir beneficiário');
       }
-    } catch {} finally {
+    } catch {
+      setError('Erro de conexão ao excluir');
+    } finally {
       setActionLoading(null);
     }
   };
@@ -119,21 +148,31 @@ export default function BeneficiariosAdmin() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        setBeneficiarios((prev) =>
-          prev.map((b) => (b.id === id ? { ...b, status: newStatus } : b))
-        );
+        const updated = await res.json();
+        if (updated && updated.id) {
+          setBeneficiarios((prev) => prev.map((b) => (b.id === id ? updated : b)));
+        } else {
+          setBeneficiarios((prev) => prev.map((b) => (b.id === id ? { ...b, status: newStatus } : b)));
+        }
+      } else {
+        const err = await res.json();
+        setError(err.message || 'Erro ao atualizar status');
       }
-    } catch {} finally {
+    } catch {
+      setError('Erro de conexão ao atualizar status');
+    } finally {
       setActionLoading(null);
     }
   };
 
-  const filtered = beneficiarios.filter(
-    (b) =>
+  const filtered = beneficiarios.filter((b) => {
+    if (statusFilter && b.status !== statusFilter) return false;
+    return (
       b.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       b.cpf?.includes(searchTerm) ||
       b.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    );
+  });
 
   const ativos = beneficiarios.filter((b) => b.status === 'ativo').length;
   const pendentes = beneficiarios.filter((b) => b.status === 'pendente').length;
@@ -149,6 +188,13 @@ export default function BeneficiariosAdmin() {
 
   return (
     <>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex justify-between items-center">
+          {error}
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+        </div>
+      )}
+
       <div className="flex justify-end mb-6">
         <button
           onClick={openCreate}
@@ -251,7 +297,7 @@ export default function BeneficiariosAdmin() {
                             className="p-2 hover:bg-green-100 rounded-lg transition disabled:opacity-50"
                             title="Aprovar"
                           >
-                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            {actionLoading === b.id ? <Loader2 className="w-5 h-5 animate-spin text-green-600" /> : <CheckCircle className="w-5 h-5 text-green-600" />}
                           </button>
                         )}
                         {b.status === 'ativo' && (
@@ -261,7 +307,7 @@ export default function BeneficiariosAdmin() {
                             className="p-2 hover:bg-yellow-100 rounded-lg transition disabled:opacity-50"
                             title="Suspender"
                           >
-                            <Lock className="w-5 h-5 text-yellow-600" />
+                            {actionLoading === b.id ? <Loader2 className="w-5 h-5 animate-spin text-yellow-600" /> : <Lock className="w-5 h-5 text-yellow-600" />}
                           </button>
                         )}
                         {b.status === 'inativo' && (
@@ -271,7 +317,7 @@ export default function BeneficiariosAdmin() {
                             className="p-2 hover:bg-green-100 rounded-lg transition disabled:opacity-50"
                             title="Reativar"
                           >
-                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            {actionLoading === b.id ? <Loader2 className="w-5 h-5 animate-spin text-green-600" /> : <CheckCircle className="w-5 h-5 text-green-600" />}
                           </button>
                         )}
                         <button
@@ -314,6 +360,13 @@ export default function BeneficiariosAdmin() {
               {editing ? <Pencil className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
               {editing ? 'Editar Beneficiário' : 'Novo Beneficiário'}
             </h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Nome Completo *</label>
@@ -358,7 +411,7 @@ export default function BeneficiariosAdmin() {
             </div>
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 className="flex-1 px-4 py-3 border-2 border-gray-300 text-[#0a2a5e] rounded-xl font-semibold hover:bg-gray-50 transition"
               >
                 Cancelar

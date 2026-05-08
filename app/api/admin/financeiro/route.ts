@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const total = data?.reduce((sum, p) => sum + parseFloat(p.valor), 0) || 0;
+    const total = data?.reduce((sum, p) => sum + (parseFloat(p.valor) || 0), 0) || 0;
 
     return NextResponse.json(
       { pagamentos: data, total, quantidade: data?.length || 0 },

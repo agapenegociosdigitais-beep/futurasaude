@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/auth';
 
+const ALLOWED_FIELDS = ['nome_completo', 'cpf', 'email', 'telefone', 'status'];
+
+function sanitize(body: Record<string, unknown>) {
+  const clean: Record<string, unknown> = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in body) clean[key] = body[key];
+  }
+  return clean;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdmin(request);
@@ -38,10 +48,25 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
 
     const body = await request.json();
+    const clean = sanitize(body);
+
+    if (!clean.nome_completo || !String(clean.nome_completo).trim()) {
+      return NextResponse.json(
+        { message: 'Nome completo é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    if (!clean.cpf || !String(clean.cpf).trim()) {
+      return NextResponse.json(
+        { message: 'CPF é obrigatório' },
+        { status: 400 }
+      );
+    }
 
     const { data, error } = await supabaseAdmin
       .from('beneficiarios')
-      .insert(body)
+      .insert(clean)
       .select()
       .single();
 

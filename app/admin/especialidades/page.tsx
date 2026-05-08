@@ -17,14 +17,18 @@ export default function EspecialidadesAdmin() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Especialidade | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ nome: '', icone: '🏥' });
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({ nome: '', icone: '🏥', ativa: true });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/especialidades');
       if (res.ok) setEspecialidades(await res.json());
-    } catch {} finally {
+    } catch {
+      setError('Erro ao carregar especialidades');
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -33,44 +37,71 @@ export default function EspecialidadesAdmin() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ nome: '', icone: '🏥' });
+    setForm({ nome: '', icone: '🏥', ativa: true });
+    setError('');
     setShowModal(true);
   };
 
   const openEdit = (esp: Especialidade) => {
     setEditing(esp);
-    setForm({ nome: esp.nome, icone: esp.icone || '🏥' });
+    setForm({ nome: esp.nome, icone: esp.icone || '🏥', ativa: esp.ativa });
+    setError('');
     setShowModal(true);
   };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
     setSaving(true);
+    setError('');
     try {
       if (editing) {
         const res = await fetch(`/api/admin/especialidades/${editing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...form }),
+          body: JSON.stringify({ nome: form.nome.trim(), icone: form.icone, ativa: form.ativa }),
         });
         if (res.ok) {
-          const updated = await res.json();
-          setEspecialidades((prev) => prev.map((e) => (e.id === editing.id ? updated : e)));
+          await load();
+          setShowModal(false);
+        } else {
+          const err = await res.json();
+          setError(err.message || 'Erro ao atualizar especialidade');
         }
       } else {
         const res = await fetch('/api/admin/especialidades', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ nome: form.nome.trim(), icone: form.icone, ativa: form.ativa }),
         });
         if (res.ok) {
-          const created = await res.json();
-          setEspecialidades((prev) => [...prev, created]);
+          await load();
+          setShowModal(false);
+        } else {
+          const err = await res.json();
+          setError(err.message || 'Erro ao criar especialidade');
         }
       }
-      setShowModal(false);
-    } catch {} finally {
+    } catch {
+      setError('Erro de conexão');
+    } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (esp: Especialidade) => {
+    if (!confirm(`Tem certeza que deseja excluir "${esp.nome}"?`)) return;
+    setDeleting(esp.id);
+    try {
+      const res = await fetch(`/api/admin/especialidades/${esp.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setEspecialidades((prev) => prev.filter((e) => e.id !== esp.id));
+      } else {
+        setError('Erro ao deletar especialidade');
+      }
+    } catch {
+      setError('Erro de conexão ao deletar');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -85,8 +116,12 @@ export default function EspecialidadesAdmin() {
         setEspecialidades((prev) =>
           prev.map((e) => (e.id === esp.id ? { ...e, ativa: !e.ativa } : e))
         );
+      } else {
+        setError('Erro ao alterar status');
       }
-    } catch {}
+    } catch {
+      setError('Erro de conexão');
+    }
   };
 
   if (loading) {
@@ -99,6 +134,13 @@ export default function EspecialidadesAdmin() {
 
   return (
     <>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex justify-between items-center">
+          {error}
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 ml-2">&times;</button>
+        </div>
+      )}
+
       <div className="flex justify-end mb-6">
         <button
           onClick={openCreate}
@@ -132,8 +174,9 @@ export default function EspecialidadesAdmin() {
                 <Pencil className="w-4 h-4" />
               </button>
               <button
-                onClick={() => toggleAtiva(esp)}
-                className="p-2 border-2 border-gray-300 text-red-500 rounded-lg hover:bg-red-50 transition"
+                onClick={() => handleDelete(esp)}
+                disabled={deleting === esp.id}
+                className="p-2 border-2 border-gray-300 text-red-500 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -154,6 +197,13 @@ export default function EspecialidadesAdmin() {
             <h2 className="text-lg font-bold text-[#0a2a5e] mb-4">
               {editing ? 'Editar Especialidade' : 'Nova Especialidade'}
             </h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Nome</label>
@@ -174,10 +224,22 @@ export default function EspecialidadesAdmin() {
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none text-2xl"
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.ativa}
+                  onChange={(e) => setForm({ ...form, ativa: e.target.checked })}
+                  className="w-4 h-4 accent-[#f5c842]"
+                  id="esp-ativa-check"
+                />
+                <label htmlFor="esp-ativa-check" className="text-sm font-semibold text-gray-700">
+                  Especialidade ativa
+                </label>
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setError(''); }}
                 className="flex-1 px-4 py-3 border-2 border-gray-300 text-[#0a2a5e] rounded-xl font-semibold hover:bg-gray-50 transition"
               >
                 Cancelar
