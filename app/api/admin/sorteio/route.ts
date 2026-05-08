@@ -3,6 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/auth';
 import crypto from 'crypto';
 
+function secureRandomInt(max: number): number {
+  return crypto.randomInt(max);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdmin(request);
@@ -11,7 +15,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { num_ganhadores, premio } = body;
 
-    // Obter beneficiários ativos
     const { data: beneficiarios, error: benefError } = await supabaseAdmin
       .from('beneficiarios')
       .select('id, nome_completo')
@@ -25,19 +28,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sortear ganhadores
     const ganhadores = [];
-    const indexesSorteados = new Set();
+    const indexesSorteados = new Set<number>();
+    const count = Math.min(num_ganhadores || 1, beneficiarios.length);
 
-    while (ganhadores.length < Math.min(num_ganhadores, beneficiarios.length)) {
-      const index = Math.floor(Math.random() * beneficiarios.length);
+    while (ganhadores.length < count) {
+      const index = secureRandomInt(beneficiarios.length);
       if (!indexesSorteados.has(index)) {
         indexesSorteados.add(index);
         ganhadores.push(beneficiarios[index]);
       }
     }
-
-    // Criar hash de auditoria
     const hashInput = JSON.stringify(ganhadores) + Date.now();
     const hashAuditoria = crypto
       .createHash('sha256')

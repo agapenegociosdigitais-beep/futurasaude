@@ -3,6 +3,19 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
+    const token =
+      request.headers.get('authorization')?.replace('Bearer ', '') ||
+      request.cookies.get('sb-access-token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ message: 'Nao autorizado' }, { status: 401 });
+    }
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ message: 'Token invalido' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const cidade = searchParams.get('cidade');
     const especialidade = searchParams.get('especialidade');
@@ -25,17 +38,11 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      return NextResponse.json(
-        { message: 'Erro ao buscar clínicas' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Erro ao buscar clinicas' }, { status: 400 });
     }
 
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    return NextResponse.json(
-      { message: 'Erro interno do servidor' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
   }
 }

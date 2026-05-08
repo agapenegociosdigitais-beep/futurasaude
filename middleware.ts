@@ -9,7 +9,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const PUBLIC_ROUTES = ['/', '/login', '/cadastro', '/pagamento', '/admin/login'];
 
 function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.includes(pathname);
+  return PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
 }
 
 function isStaticOrApi(pathname: string): boolean {
@@ -18,6 +18,10 @@ function isStaticOrApi(pathname: string): boolean {
     pathname.startsWith('/api') ||
     pathname.includes('.')
   );
+}
+
+function shouldRedirectAfterAuth(pathname: string): boolean {
+  return pathname === '/cadastro' || pathname === '/cadastro/sucesso';
 }
 
 function makeSupabaseAnon() {

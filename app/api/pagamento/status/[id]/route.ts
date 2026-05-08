@@ -3,9 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = request.cookies.get('sb-access-token')?.value;
 
     if (!token) {
@@ -21,7 +22,7 @@ export async function GET(
     const { data: pagamento, error } = await supabaseAdmin
       .from('pagamentos')
       .select('id, beneficiario_id, responsavel_id, status, valor, metodo, pago_em')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !pagamento) {
