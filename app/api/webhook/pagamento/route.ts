@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-const processedEvents = new Map<string, number>();
-const DEDUP_TTL = 60_000 * 5;
+const DEDUP_TTL_MS = 5 * 60 * 1000;
 
 function verifyAsaasToken(received: string | null): boolean {
   const expected = process.env.ASAAS_WEBHOOK_TOKEN;
@@ -17,18 +16,29 @@ function verifyAsaasToken(received: string | null): boolean {
   return received === expected;
 }
 
-function isDuplicate(eventId: string): boolean {
-  const now = Date.now();
-  const seen = processedEvents.get(eventId);
+async function isDuplicate(eventId: string): Promise<boolean> {
+  const cutoff = new Date(Date.now() - DEDUP_TTL_MS).toISOString();
 
-  if (seen && now - seen < DEDUP_TTL) {
-    return true;
+  const { data, error } = await supabaseAdmin
+    .from('webhook_events')
+    .select('id')
+    .eq('event_id', eventId)
+    .gte('created_at', cutoff)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Erro ao verificar dedup:', error);
+    return false;
   }
 
-  processedEvents.set(eventId, now);
+  if (data) return true;
 
-  for (const [key, ts] of processedEvents) {
-    if (now - ts > DEDUP_TTL) processedEvents.delete(key);
+  const { error: insertError } = await supabaseAdmin
+    .from('webhook_events')
+    .insert({ event_id: eventId });
+
+  if (insertError) {
+    console.error('Erro ao registrar evento webhook:', insertError);
   }
 
   return false;
@@ -43,8 +53,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log('Webhook recebido:', JSON.stringify(body, null, 2));
-
     const { event, payment } = body;
 
     if (!payment?.id) {
@@ -52,14 +60,12 @@ export async function POST(request: NextRequest) {
     }
 
     const gatewayId = payment.id;
-    const eventId = `${gatewayId}-${payment.status}-${body.event || event || ''}`;
+    const status = payment.status;
+    const eventId = `${gatewayId}-${status}-${event || ''}`;
 
-    if (isDuplicate(eventId)) {
-      console.log('Webhook duplicado ignorado:', eventId);
+    if (await isDuplicate(eventId)) {
       return NextResponse.json({ message: 'Evento já processado' }, { status: 200 });
     }
-
-    const status = payment.status;
 
     const { data: pagamentoExistente, error: findError } = await supabaseAdmin
       .from('pagamentos')
@@ -73,7 +79,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (pagamentoExistente.status === 'pago' && status !== 'REFUNDED') {
-      console.log('Pagamento já confirmado, ignorando:', gatewayId);
       return NextResponse.json({ message: 'Pagamento já processado' }, { status: 200 });
     }
 
@@ -118,8 +123,6 @@ export async function POST(request: NextRequest) {
         console.error('Erro ao ativar beneficiário:', benefError);
         return NextResponse.json({ message: 'Erro ao ativar beneficiário' }, { status: 400 });
       }
-
-      console.log('Beneficiário ativado:', pagamentoExistente.beneficiario_id);
     }
 
     if (novoStatus === 'reembolsado') {
@@ -137,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ message: 'Webhook processado com sucesso' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro no webhook:', error);
     return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
   }

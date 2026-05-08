@@ -50,6 +50,15 @@ export async function middleware(request: NextRequest) {
   const refreshToken = request.cookies.get('sb-refresh-token')?.value;
 
   if (isPublicRoute(pathname)) {
+    if (accessToken && shouldRedirectAfterAuth(pathname)) {
+      try {
+        const supabase = makeSupabaseAnon();
+        const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+        if (!error && user) {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+      } catch {}
+    }
     if (accessToken && pathname === '/login') {
       try {
         const supabase = makeSupabaseAnon();

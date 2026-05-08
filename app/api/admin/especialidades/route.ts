@@ -54,6 +54,20 @@ export async function POST(request: NextRequest) {
 
     if (clean.ativa === undefined) clean.ativa = true;
 
+    const existingNome = String(clean.nome).trim().toLowerCase();
+    const { data: dup } = await supabaseAdmin
+      .from('especialidades')
+      .select('id')
+      .ilike('nome', existingNome)
+      .maybeSingle();
+
+    if (dup) {
+      return NextResponse.json(
+        { message: 'Especialidade com esse nome já existe' },
+        { status: 409 }
+      );
+    }
+
     const { data, error } = await supabaseAdmin
       .from('especialidades')
       .insert(clean)
