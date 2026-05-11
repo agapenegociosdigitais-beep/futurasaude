@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type Beneficiario = {
@@ -14,13 +14,23 @@ type Beneficiario = {
   plano_fim: string | null;
   status: string | null;
   score_engajamento: number | null;
+  foto_url: string | null;
+  escola: string | null;
+  cidade: string | null;
 };
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
-  const d = new Date(iso);
+  const d = new Date(iso + 'T00:00:00');
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('pt-BR');
+}
+
+function fmtValidade(iso: string | null) {
+  if (!iso) return 'Pendente';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' });
 }
 
 function fmtCpf(cpf: string | null) {
@@ -54,38 +64,63 @@ export default function CarteirinhaDashboard() {
     load();
   }, []);
 
-  const validUntil = b?.plano_fim
-    ? new Date(b.plano_fim).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })
-    : '—';
-
-  const cpfFmt = b?.cpf
-    ? b.cpf.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-    : '—';
+  const nomeBeneficiario = b?.nome_completo || '—';
+  const validadeCartao = fmtValidade(b?.plano_fim || null);
+  const statusPlano = b?.status === 'ativo' ? 'ATIVO' : 'PENDENTE';
+  const cpfFmt = fmtCpf(b?.cpf || null);
+  const iniciais = nomeBeneficiario.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 
   async function handleDownloadPdf() {
     if (!b) return;
     setGerandoPdf(true);
     try {
       const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-        <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f0f2f8;margin:0}
-        .card{background:linear-gradient(135deg,#0a2a5e,#1c3a7a);border-radius:20px;padding:40px;max-width:540px;width:100%;color:white}
-        h1{font-size:28px;margin:0 0 4px}p{margin:0;opacity:.7;font-size:13px}
-        .row{display:flex;justify-content:space-between;margin-top:32px}
-        .field p:first-child{font-size:10px;opacity:.6;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
-        .field p:last-child{font-size:18px;font-weight:700}
-        .num{font-size:22px;font-weight:900;letter-spacing:2px;margin-top:24px;font-family:monospace}</style>
-        </head><body><div class="card">
-        <h1>FUTURA SAÚDE</h1><p>Cartão de Saúde Digital</p>
-        <div class="num">${b.numero_cartao || '—'}</div>
-        <div class="row">
-          <div class="field"><p>Titular</p><p>${b.nome_completo || '—'}</p></div>
-          <div class="field"><p>Válida até</p><p>${validUntil}</p></div>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', sans-serif; background: #f0f2f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+          .card { width: 600px; background: linear-gradient(135deg, #0a1f5e 0%, #0d2d7a 50%, #1565c0 100%); border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(10,30,94,0.4); }
+          .ribbon { background: rgba(245,200,66,0.15); padding: 12px 24px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+          .logo { font-size: 22px; font-weight: 900; color: white; letter-spacing: 1px; }
+          .logo span { color: #f5c842; }
+          .slogan { font-size: 11px; color: rgba(255,255,255,0.6); margin-left: auto; }
+          .body { display: grid; grid-template-columns: 120px 1fr; gap: 20px; padding: 20px 24px; }
+          .foto { width: 110px; height: 110px; border-radius: 14px; background: rgba(255,255,255,0.15); border: 2px solid rgba(245,200,66,0.4); display: flex; align-items: center; justify-content: center; font-size: 38px; font-weight: 900; color: white; overflow: hidden; }
+          .foto img { width: 100%; height: 100%; object-fit: cover; }
+          .campos { display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+          .campo-label { font-size: 11px; color: #f5c842; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }
+          .campo-val { font-size: 16px; font-weight: 700; color: white; }
+          .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+          .footer { background: rgba(0,0,0,0.3); padding: 16px 24px; }
+          .footer-tipo { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+          .footer-nome { font-size: 22px; font-weight: 900; color: white; letter-spacing: 1px; text-transform: uppercase; }
+          .footer-num { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 2px; margin-top: 4px; }
+        </style>
+      </head><body><div class="card">
+        <div class="ribbon">
+          <div class="logo">FUTURA<span>SAÚDE</span></div>
+          <div class="slogan">Educação e saúde pelo futuro do seu filho</div>
         </div>
-        <div class="row">
-          <div class="field"><p>CPF</p><p>${cpfFmt}</p></div>
-          <div class="field"><p>Status</p><p>${b.status === 'ativo' ? 'ATIVO ✓' : b.status || '—'}</p></div>
+        <div class="body">
+          <div class="foto">${b.foto_url ? `<img src="${b.foto_url}" />` : iniciais}</div>
+          <div class="campos">
+            <div><div class="campo-label">CPF:</div><div class="campo-val">${cpfFmt}</div></div>
+            <div class="row">
+              <div><div class="campo-label">Nascimento:</div><div class="campo-val">${fmtDate(b.data_nascimento)}</div></div>
+              <div><div class="campo-label">Validade:</div><div class="campo-val" style="color:#f5c842">${validadeCartao}</div></div>
+            </div>
+            <div class="row">
+              <div><div class="campo-label">Escola:</div><div class="campo-val">${b.escola || '—'}</div></div>
+              <div><div class="campo-label">Cidade:</div><div class="campo-val">${b.cidade || '—'}</div></div>
+            </div>
+          </div>
         </div>
-        </div></body></html>`;
+        <div class="footer">
+          <div class="footer-tipo">Beneficiário</div>
+          <div class="footer-nome">${nomeBeneficiario.toUpperCase()}</div>
+          <div class="footer-num">${b.numero_cartao || '—'} · ${statusPlano}</div>
+        </div>
+      </div></body></html>`;
+
       const win = window.open('', '_blank');
       if (win) {
         win.document.write(html);
@@ -100,16 +135,12 @@ export default function CarteirinhaDashboard() {
 
   async function handleShare() {
     if (!b) return;
-    const text = `Carteirinha Futura Saúde\nTitular: ${b.nome_completo}\nNº: ${b.numero_cartao || '—'}\nVálida até: ${validUntil}`;
+    const text = `Carteirinha Futura Saúde\nBeneficiário: ${nomeBeneficiario}\nNº: ${b.numero_cartao || '—'}\nVálida até: ${validadeCartao}`;
     if (typeof navigator !== 'undefined' && navigator.share) {
       await navigator.share({ title: 'Carteirinha Futura Saúde', text });
     } else {
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
-  }
-
-  function handleOffline() {
-    window.print();
   }
 
   return (
@@ -122,9 +153,9 @@ export default function CarteirinhaDashboard() {
         Voltar
       </Link>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         <h1 className="text-4xl font-bold text-[#0a2a5e] mb-8 font-lora">
-          Sua Carteirinha Digital
+          Minha Carteirinha
         </h1>
 
         {loading && (
@@ -141,94 +172,170 @@ export default function CarteirinhaDashboard() {
 
         {b && !loading && !error && (
           <>
-            <div className="bg-gradient-to-br from-[#0a2a5e] to-[#1c3a7a] rounded-3xl shadow-2xl p-12 text-white mb-8 aspect-video flex flex-col justify-between">
-              <div>
-                <div className="text-4xl font-bold mb-2">🏥</div>
-                <h2 className="font-lora text-3xl font-bold">FUTURA SAÚDE</h2>
-                <p className="text-gray-300">Cartão de Saúde Digital</p>
+            {/* Carteirinha */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0a1f5e 0%, #0d2d7a 50%, #1565c0 100%)',
+              borderRadius: '20px',
+              overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(10,30,94,0.4)',
+              marginBottom: '24px',
+            }}>
+              {/* Ribbon / Logo */}
+              <div style={{
+                background: 'rgba(245,200,66,0.12)',
+                padding: '14px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+              }}>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: 'white', letterSpacing: '1px' }}>
+                  FUTURA<span style={{ color: '#f5c842' }}>SAÚDE</span>
+                </div>
+                <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
+                  Educação e saúde pelo futuro do seu filho
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-12">
-                <div>
-                  <p className="text-xs opacity-80 mb-2">NÚMERO DA CARTEIRINHA</p>
-                  <p className="font-mono text-2xl font-bold">{b.numero_cartao || '—'}</p>
+
+              {/* Body */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '130px 1fr',
+                gap: '20px',
+                padding: '22px 24px',
+              }}>
+                {/* Foto */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{
+                    width: '115px',
+                    height: '115px',
+                    borderRadius: '14px',
+                    background: 'rgba(255,255,255,0.12)',
+                    border: '2px solid rgba(245,200,66,0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '36px',
+                    fontWeight: 900,
+                    color: 'white',
+                    overflow: 'hidden',
+                  }}>
+                    {b.foto_url ? (
+                      <img src={b.foto_url} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : iniciais}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs opacity-80 mb-2">VÁLIDA ATÉ</p>
-                  <p className="text-2xl font-bold">{validUntil}</p>
+
+                {/* Campos */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#f5c842', fontWeight: 600, marginBottom: '2px' }}>CPF:</div>
+                    <div style={{ fontSize: '17px', fontWeight: 700, color: 'white' }}>{cpfFmt}</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#f5c842', fontWeight: 600, marginBottom: '2px' }}>Nascimento:</div>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: 'white' }}>{fmtDate(b.data_nascimento)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#f5c842', fontWeight: 600, marginBottom: '2px' }}>Validade:</div>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#f5c842' }}>{validadeCartao}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#f5c842', fontWeight: 600, marginBottom: '2px' }}>Escola:</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'white' }}>{b.escola || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#f5c842', fontWeight: 600, marginBottom: '2px' }}>Cidade:</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'white' }}>{b.cidade || '—'}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-xs opacity-80 mb-1">TITULAR</p>
-                  <p className="text-xl font-semibold">{b.nome_completo || '—'}</p>
+
+              {/* Footer */}
+              <div style={{
+                background: 'rgba(0,0,0,0.3)',
+                padding: '16px 24px',
+              }}>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Beneficiário
                 </div>
-                <div className="text-right">
-                  <p className="text-xs opacity-80 mb-1">CPF</p>
-                  <p className="font-mono">{fmtCpf(b.cpf)}</p>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: 'white', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                  {nomeBeneficiario}
+                </div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', letterSpacing: '2px', marginTop: '4px' }}>
+                  {b.numero_cartao || '—'} · {statusPlano}
                 </div>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
+            {/* Botões */}
+            <div className="grid grid-cols-3 gap-4 mb-8">
               <button
                 onClick={handleDownloadPdf}
                 disabled={gerandoPdf}
-                className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left disabled:opacity-50"
+                className="bg-white rounded-xl p-5 border-2 border-gray-300 hover:border-[#f5c842] transition text-left disabled:opacity-50"
               >
-                <Download className="w-8 h-8 text-[#f5c842] mb-3" />
-                <h3 className="font-bold text-[#0a2a5e]">{gerandoPdf ? 'Gerando...' : 'Baixar em PDF'}</h3>
-                <p className="text-sm text-gray-600">Salve uma cópia no seu dispositivo</p>
+                <div className="text-2xl mb-2">⬇️</div>
+                <h3 className="font-bold text-[#0a2a5e] text-sm">{gerandoPdf ? 'Gerando...' : 'Baixar em PDF'}</h3>
+                <p className="text-xs text-gray-500 mt-1">Salve no dispositivo</p>
               </button>
               <button
                 onClick={handleShare}
-                className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left"
+                className="bg-white rounded-xl p-5 border-2 border-gray-300 hover:border-[#f5c842] transition text-left"
               >
-                <Share2 className="w-8 h-8 text-[#f5c842] mb-3" />
-                <h3 className="font-bold text-[#0a2a5e]">Compartilhar</h3>
-                <p className="text-sm text-gray-600">Envie para familiares de forma segura</p>
+                <div className="text-2xl mb-2">📤</div>
+                <h3 className="font-bold text-[#0a2a5e] text-sm">Compartilhar</h3>
+                <p className="text-xs text-gray-500 mt-1">Envie com segurança</p>
               </button>
               <button
-                onClick={handleOffline}
-                className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left"
+                onClick={() => window.print()}
+                className="bg-white rounded-xl p-5 border-2 border-gray-300 hover:border-[#f5c842] transition text-left"
               >
-                <div className="text-2xl mb-3">📱</div>
-                <h3 className="font-bold text-[#0a2a5e]">Modo Offline</h3>
-                <p className="text-sm text-gray-600">Use sem internet</p>
+                <div className="text-2xl mb-2">📱</div>
+                <h3 className="font-bold text-[#0a2a5e] text-sm">Modo Offline</h3>
+                <p className="text-xs text-gray-500 mt-1">Use sem internet</p>
               </button>
             </div>
 
+            {/* Dados detalhados */}
             <div className="bg-white rounded-xl p-8 border-2 border-gray-300">
               <h2 className="text-xl font-bold text-[#0a2a5e] mb-6">Dados da Carteirinha</h2>
-              <div className="grid md:grid-cols-2 gap-8">
+              <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Nome Completo</p>
-                  <p className="font-semibold text-[#0a2a5e]">{b.nome_completo || '—'}</p>
+                  <p className="text-sm text-gray-500 mb-1">Beneficiário</p>
+                  <p className="font-semibold text-[#0a2a5e]">{nomeBeneficiario}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">CPF</p>
-                  <p className="font-semibold text-[#0a2a5e]">{fmtCpf(b.cpf)}</p>
+                  <p className="text-sm text-gray-500 mb-1">CPF</p>
+                  <p className="font-semibold text-[#0a2a5e]">{cpfFmt}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Data de Nascimento</p>
+                  <p className="text-sm text-gray-500 mb-1">Data de Nascimento</p>
                   <p className="font-semibold text-[#0a2a5e]">{fmtDate(b.data_nascimento)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Status</p>
-                  <p className="font-semibold text-[#0a2a5e]">
-                    {b.status === 'ativo' ? 'Ativo' : b.status || '—'}
-                  </p>
+                  <p className="text-sm text-gray-500 mb-1">Nº da Carteirinha</p>
+                  <p className="font-semibold text-[#0a2a5e] font-mono">{b.numero_cartao || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Plano Válido de</p>
-                  <p className="font-semibold text-[#0a2a5e]">
-                    {fmtDate(b.plano_inicio)} a {fmtDate(b.plano_fim)}
-                  </p>
+                  <p className="text-sm text-gray-500 mb-1">Escola</p>
+                  <p className="font-semibold text-[#0a2a5e]">{b.escola || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Score de Engajamento</p>
-                  <p className="font-semibold text-[#0a2a5e]">
-                    {b.score_engajamento != null ? `${b.score_engajamento}/100` : '—'}
-                  </p>
+                  <p className="text-sm text-gray-500 mb-1">Cidade</p>
+                  <p className="font-semibold text-[#0a2a5e]">{b.cidade || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Plano Válido de</p>
+                  <p className="font-semibold text-[#0a2a5e]">{fmtDate(b.plano_inicio)} a {fmtDate(b.plano_fim)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Status</p>
+                  <p className="font-semibold text-[#0a2a5e]">{b.status === 'ativo' ? 'Ativo ✓' : b.status || '—'}</p>
                 </div>
               </div>
             </div>
