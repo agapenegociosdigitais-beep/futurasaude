@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [beneficiario, setBeneficiario] = useState<any>(null);
+  const [perfil, setPerfil] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -30,6 +31,9 @@ export default function DashboardPage() {
         fetch('/api/beneficiario/perfil', { headers })
       .then(res => res.json())
       .then(data => {
+        if (data.perfil) {
+          setPerfil(data.perfil);
+        }
         if (data.beneficiario) {
           setBeneficiario(data.beneficiario);
           if (data.beneficiario.foto_url) {
@@ -49,9 +53,9 @@ export default function DashboardPage() {
 
   // Helpers para dados reais — sem localStorage direto (SSR safe)
   const nomeStorage = typeof window !== 'undefined' ? localStorage.getItem('usuario_nome') : '';
-  const nomeExibir = beneficiario?.nome_completo || nomeStorage || 'Beneficiário';
+  const nomeExibir = perfil?.nome_completo || beneficiario?.nome || nomeStorage || 'Beneficiário';
   const primeiroNome = nomeExibir.split(' ')[0];
-  const numeroCartao = beneficiario?.numero_cartao || 'FS-2025-00001';
+  const numeroCartao = beneficiario?.numero_carteirinha || 'FS-2025-00001';
   const cpfExibir = beneficiario?.cpf
     ? beneficiario.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
     : '000.000.000-00';
@@ -62,7 +66,7 @@ export default function DashboardPage() {
     ? new Date(beneficiario.plano_fim + 'T00:00:00').toLocaleDateString('pt-BR')
     : 'Pendente';
   const statusPlano = beneficiario?.status === 'ativo' ? 'ATIVO' : 'PENDENTE';
-  const cidadeBen = beneficiario?.cidade || 'Santarém — PA';
+  const cidadeBen = perfil?.cidade || 'Santarém — PA';
 
   // Upload de foto — salva no Supabase Storage
   const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -191,24 +195,24 @@ export default function DashboardPage() {
               <div class="campos">
                 <div class="campo">
                   <div class="campo-label">CPF:</div>
-                  <div class="campo-val">456.789.123-00</div>
+                  <div class="campo-val">${cpfExibir}</div>
                 </div>
                 <div class="row">
                   <div class="campo">
                     <div class="campo-label">Data de Nascimento:</div>
-                    <div class="campo-val">{nascimento}</div>
+                    <div class="campo-val">${nascimento}</div>
                   </div>
                   <div class="campo">
                     <div class="campo-label">Validade:</div>
-                    <div class="campo-val" style="color:#f5c842">15/06/2026</div>
+                    <div class="campo-val" style="color:#f5c842">${validadeCartao}</div>
                   </div>
                 </div>
               </div>
             </div>
             <div class="footer">
               <div class="footer-tipo">Beneficiário</div>
-              <div class="footer-nome">{nomeExibir}</div>
-              <div class="footer-num">{numeroCartao} · ATIVO ✓ · Santarém — PA</div>
+              <div class="footer-nome">${nomeExibir}</div>
+              <div class="footer-num">${numeroCartao} · ${statusPlano} · ${cidadeBen}</div>
             </div>
           </div>
         </body>
@@ -379,10 +383,17 @@ export default function DashboardPage() {
           <div className="slogan">Educação e saúde pelo futuro do seu filho</div>
         </div>
         <div className="sidebar-user">
-          <div className="avatar">B</div>
+          <div className="avatar" style={{ overflow: 'hidden', padding: fotoUrl ? 0 : undefined }}>
+            {fotoUrl
+              ? <img src={fotoUrl} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : (primeiroNome[0]?.toUpperCase() || 'B')
+            }
+          </div>
           <div>
             <div style={{ fontSize: '13px', fontWeight: '700', color: 'white' }}>{primeiroNome}</div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Plano ativo</div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+              Plano {beneficiario?.status === 'ativo' ? 'ativo' : 'pendente'}
+            </div>
           </div>
         </div>
         <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 0' }}>
@@ -390,18 +401,18 @@ export default function DashboardPage() {
           <button className={`nav-item ${currentPage === 'inicio' ? 'ativo' : ''}`} onClick={() => setCurrentPage('inicio')}>
             <span>🏠</span> Início
           </button>
-          <button className={`nav-item ${currentPage === 'carteirinha' ? 'ativo' : ''}`} onClick={() => setCurrentPage('carteirinha')}>
+          <button className="nav-item" onClick={() => router.push('/dashboard/carteirinha')}>
             <span>💳</span> Minha Carteirinha
           </button>
           <div className="nav-section">Serviços</div>
-          <button className={`nav-item ${currentPage === 'clinicas' ? 'ativo' : ''}`} onClick={() => setCurrentPage('clinicas')}>
+          <button className="nav-item" onClick={() => router.push('/dashboard/clinicas')}>
             <span>🏥</span> Rede Credenciada
           </button>
-          <button className={`nav-item ${currentPage === 'agendamentos' ? 'ativo' : ''}`} onClick={() => setCurrentPage('agendamentos')}>
+          <button className="nav-item" onClick={() => router.push('/dashboard/agendamentos')}>
             <span>📅</span> Agendamentos
           </button>
           <div className="nav-section">Conta</div>
-          <button className={`nav-item ${currentPage === 'perfil' ? 'ativo' : ''}`} onClick={() => setCurrentPage('perfil')}>
+          <button className="nav-item" onClick={() => router.push('/dashboard/configuracoes')}>
             <span>👤</span> Meu Perfil
           </button>
         </nav>
@@ -430,13 +441,7 @@ export default function DashboardPage() {
         <div className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>
-            <div className="topbar-title">
-              {currentPage === 'inicio' && 'Início'}
-              {currentPage === 'carteirinha' && 'Minha Carteirinha'}
-              {currentPage === 'clinicas' && 'Rede Credenciada'}
-              {currentPage === 'agendamentos' && 'Agendamentos'}
-              {currentPage === 'perfil' && 'Meu Perfil'}
-            </div>
+            <div className="topbar-title">Início</div>
           </div>
           <span className="badge-ativo">✅ Plano Ativo</span>
         </div>
@@ -571,82 +576,6 @@ export default function DashboardPage() {
                   style={{ display: 'none' }}
                   onChange={handleFotoUpload}
                 />
-              </div>
-            </div>
-          )}
-
-          {/* CLÍNICAS */}
-          {currentPage === 'clinicas' && (
-            <div className="card">
-              <div className="card-title">🏥 Rede Credenciada — Santarém PA</div>
-              <div className="clinica-card">
-                <div className="clinica-icon">🦷</div>
-                <div style={{ flex: 1 }}>
-                  <span className="esp-badge" style={{ background: '#e8f5ee', color: '#1a5c33' }}>Dentista</span>
-                  <div className="clinica-nome">Dr. Carlos Mendes</div>
-                  <div className="clinica-info">🏥 Clínica OralVida · 📍 Av. Tapajós, 1250 · ⏰ Seg–Sex 8h–18h</div>
-                </div>
-                <a className="btn-agendar" href="https://wa.me/5593999990001?text=Olá! Sou portador do Cartão Futura Saúde e gostaria de agendar uma consulta." target="_blank">
-                  💬 Agendar
-                </a>
-              </div>
-              <div className="clinica-card">
-                <div className="clinica-icon">🧠</div>
-                <div style={{ flex: 1 }}>
-                  <span className="esp-badge" style={{ background: '#eeedfe', color: '#3c3489' }}>Psicóloga</span>
-                  <div className="clinica-nome">Dra. Ana Beatriz Lima</div>
-                  <div className="clinica-info">🏥 Instituto Mente Saudável · 📍 Rua Siqueira Campos, 380 · ⏰ Seg–Sáb 8h–20h</div>
-                </div>
-                <a className="btn-agendar" href="https://wa.me/5593999990002?text=Olá! Sou portador do Cartão Futura Saúde e gostaria de agendar uma consulta." target="_blank">
-                  💬 Agendar
-                </a>
-              </div>
-              <div className="clinica-card">
-                <div className="clinica-icon">👁️</div>
-                <div style={{ flex: 1 }}>
-                  <span className="esp-badge" style={{ background: '#e6f1fb', color: '#0c447c' }}>Optometrista</span>
-                  <div className="clinica-nome">Dr. Roberto Farias</div>
-                  <div className="clinica-info">🏥 VisãoClara Ótica · 📍 Trav. Francisco Corrêa, 90 · ⏰ Seg–Sex 9h–17h</div>
-                </div>
-                <a className="btn-agendar" href="https://wa.me/5593999990003?text=Olá! Sou portador do Cartão Futura Saúde e gostaria de agendar uma avaliação de vista." target="_blank">
-                  💬 Agendar
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* AGENDAMENTOS */}
-          {currentPage === 'agendamentos' && (
-            <div className="card">
-              <div className="card-title">📅 Meus Agendamentos</div>
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--cinza)' }}>
-                <div style={{ fontSize: '40px', marginBottom: '12px' }}>📅</div>
-                <div style={{ fontSize: '15px', fontWeight: '600', marginBottom: '8px' }}>Nenhum agendamento ainda</div>
-                <div style={{ fontSize: '13px' }}>Acesse a rede credenciada e agende sua primeira consulta!</div>
-                <button className="btn-download" style={{ marginTop: '16px' }} onClick={() => setCurrentPage('clinicas')}>
-                  🏥 Ver clínicas
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* PERFIL */}
-          {currentPage === 'perfil' && (
-            <div className="card" style={{ maxWidth: '560px' }}>
-              <div className="card-title">👤 Meu Perfil</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>RESPONSÁVEL</div><div style={{ fontWeight: '700', color: 'var(--azul)' }}>João Carlos Silva</div></div>
-                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>BENEFICIÁRIO</div><div style={{ fontWeight: '700', color: 'var(--azul)' }}>{nomeExibir}</div></div>
-                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>PLANO ATÉ</div><div style={{ color: '#1a7a4a', fontWeight: '700' }}>{validadeCartao}</div></div>
-                  <div><div style={{ fontSize: '11px', color: 'var(--cinza)', marginBottom: '4px', fontWeight: '600' }}>CARTÃO</div><div>{numeroCartao}</div></div>
-                </div>
-                <div style={{ borderTop: '1px solid #f0eeea', paddingTop: '14px', fontSize: '12px', color: 'var(--cinza)', lineHeight: '1.7' }}>
-                  🔒 Seus dados são protegidos pela LGPD (Lei 13.709/2018).
-                  <a href="https://wa.me/5593992173231?text=Quero solicitar exclusão dos meus dados - LGPD" style={{ display: 'block', marginTop: '8px', color: '#e53935', fontSize: '12px' }}>
-                    Solicitar exclusão dos dados
-                  </a>
-                </div>
               </div>
             </div>
           )}

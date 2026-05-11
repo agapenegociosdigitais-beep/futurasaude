@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       .from('pagamentos')
       .select('id, beneficiario_id, status')
       .eq('gateway_id', gatewayId)
-      .single();
+      .maybeSingle();
 
     if (findError || !pagamentoExistente) {
       console.error('Pagamento nao encontrado:', gatewayId);

@@ -9,7 +9,7 @@ type Beneficiario = {
   nome_completo: string;
   cpf: string | null;
   data_nascimento: string | null;
-  numero_cartao: string | null;
+  numero_carteirinha: string | null;
   plano_inicio: string | null;
   plano_fim: string | null;
   status: string | null;
@@ -34,6 +34,7 @@ export default function CarteirinhaDashboard() {
   const [b, setB] = useState<Beneficiario | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -56,6 +57,60 @@ export default function CarteirinhaDashboard() {
   const validUntil = b?.plano_fim
     ? new Date(b.plano_fim).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })
     : '—';
+
+  const cpfFmt = b?.cpf
+    ? b.cpf.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+    : '—';
+
+  async function handleDownloadPdf() {
+    if (!b) return;
+    setGerandoPdf(true);
+    try {
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+        <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f0f2f8;margin:0}
+        .card{background:linear-gradient(135deg,#0a2a5e,#1c3a7a);border-radius:20px;padding:40px;max-width:540px;width:100%;color:white}
+        h1{font-size:28px;margin:0 0 4px}p{margin:0;opacity:.7;font-size:13px}
+        .row{display:flex;justify-content:space-between;margin-top:32px}
+        .field p:first-child{font-size:10px;opacity:.6;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+        .field p:last-child{font-size:18px;font-weight:700}
+        .num{font-size:22px;font-weight:900;letter-spacing:2px;margin-top:24px;font-family:monospace}</style>
+        </head><body><div class="card">
+        <h1>FUTURA SAÚDE</h1><p>Cartão de Saúde Digital</p>
+        <div class="num">${b.numero_carteirinha || '—'}</div>
+        <div class="row">
+          <div class="field"><p>Titular</p><p>${b.nome_completo || '—'}</p></div>
+          <div class="field"><p>Válida até</p><p>${validUntil}</p></div>
+        </div>
+        <div class="row">
+          <div class="field"><p>CPF</p><p>${cpfFmt}</p></div>
+          <div class="field"><p>Status</p><p>${b.status === 'ativo' ? 'ATIVO ✓' : b.status || '—'}</p></div>
+        </div>
+        </div></body></html>`;
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { win.print(); win.close(); }, 600);
+      }
+    } finally {
+      setGerandoPdf(false);
+    }
+  }
+
+  async function handleShare() {
+    if (!b) return;
+    const text = `Carteirinha Futura Saúde\nTitular: ${b.nome_completo}\nNº: ${b.numero_carteirinha || '—'}\nVálida até: ${validUntil}`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      await navigator.share({ title: 'Carteirinha Futura Saúde', text });
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  }
+
+  function handleOffline() {
+    window.print();
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -95,7 +150,7 @@ export default function CarteirinhaDashboard() {
               <div className="grid grid-cols-2 gap-12">
                 <div>
                   <p className="text-xs opacity-80 mb-2">NÚMERO DA CARTEIRINHA</p>
-                  <p className="font-mono text-2xl font-bold">{b.numero_cartao || '—'}</p>
+                  <p className="font-mono text-2xl font-bold">{b.numero_carteirinha || '—'}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs opacity-80 mb-2">VÁLIDA ATÉ</p>
@@ -115,17 +170,27 @@ export default function CarteirinhaDashboard() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <button className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left">
+              <button
+                onClick={handleDownloadPdf}
+                disabled={gerandoPdf}
+                className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left disabled:opacity-50"
+              >
                 <Download className="w-8 h-8 text-[#f5c842] mb-3" />
-                <h3 className="font-bold text-[#0a2a5e]">Baixar em PDF</h3>
+                <h3 className="font-bold text-[#0a2a5e]">{gerandoPdf ? 'Gerando...' : 'Baixar em PDF'}</h3>
                 <p className="text-sm text-gray-600">Salve uma cópia no seu dispositivo</p>
               </button>
-              <button className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left">
+              <button
+                onClick={handleShare}
+                className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left"
+              >
                 <Share2 className="w-8 h-8 text-[#f5c842] mb-3" />
                 <h3 className="font-bold text-[#0a2a5e]">Compartilhar</h3>
                 <p className="text-sm text-gray-600">Envie para familiares de forma segura</p>
               </button>
-              <button className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left">
+              <button
+                onClick={handleOffline}
+                className="bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-[#f5c842] transition text-left"
+              >
                 <div className="text-2xl mb-3">📱</div>
                 <h3 className="font-bold text-[#0a2a5e]">Modo Offline</h3>
                 <p className="text-sm text-gray-600">Use sem internet</p>
