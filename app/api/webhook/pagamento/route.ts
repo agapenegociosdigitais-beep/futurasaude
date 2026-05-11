@@ -3,11 +3,13 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 const DEDUP_TTL_MS = 5 * 60 * 1000;
 
+let dedupFallback = new Map<string, number>();
+
 function verifyAsaasToken(received: string | null): boolean {
   const expected = process.env.ASAAS_WEBHOOK_TOKEN;
 
   if (!expected) {
-    console.warn('ASAAS_WEBHOOK_TOKEN não configurado, aceitando webhook em modo dev');
+    console.warn('ASAAS_WEBHOOK_TOKEN nao configurado, aceitando webhook em modo dev');
     return true;
   }
 
@@ -19,28 +21,48 @@ function verifyAsaasToken(received: string | null): boolean {
 async function isDuplicate(eventId: string): Promise<boolean> {
   const cutoff = new Date(Date.now() - DEDUP_TTL_MS).toISOString();
 
-  const { data, error } = await supabaseAdmin
-    .from('webhook_events')
-    .select('id')
-    .eq('event_id', eventId)
-    .gte('created_at', cutoff)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('webhook_events')
+      .select('id')
+      .eq('event_id', eventId)
+      .gte('created_at', cutoff)
+      .maybeSingle();
 
-  if (error) {
-    console.error('Erro ao verificar dedup:', error);
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation')) {
+        console.warn('Tabela webhook_events nao encontrada, usando dedup em memoria');
+        return isDuplicateFallback(eventId);
+      }
+      console.error('Erro ao verificar dedup:', error);
+      return false;
+    }
+
+    if (data) return true;
+
+    const { error: insertError } = await supabaseAdmin
+      .from('webhook_events')
+      .insert({ event_id: eventId });
+
+    if (insertError) {
+      console.error('Erro ao registrar evento webhook:', insertError);
+    }
+
     return false;
+  } catch {
+    return isDuplicateFallback(eventId);
+  }
+}
+
+function isDuplicateFallback(eventId: string): boolean {
+  const now = Date.now();
+  for (const [key, ts] of dedupFallback) {
+    if (now - ts > DEDUP_TTL_MS) dedupFallback.delete(key);
   }
 
-  if (data) return true;
+  if (dedupFallback.has(eventId)) return true;
 
-  const { error: insertError } = await supabaseAdmin
-    .from('webhook_events')
-    .insert({ event_id: eventId });
-
-  if (insertError) {
-    console.error('Erro ao registrar evento webhook:', insertError);
-  }
-
+  dedupFallback.set(eventId, now);
   return false;
 }
 
@@ -49,7 +71,7 @@ export async function POST(request: NextRequest) {
     const receivedToken = request.headers.get('asaas-access-token');
 
     if (!verifyAsaasToken(receivedToken)) {
-      return NextResponse.json({ message: 'Token inválido' }, { status: 401 });
+      return NextResponse.json({ message: 'Token invalido' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -64,7 +86,7 @@ export async function POST(request: NextRequest) {
     const eventId = `${gatewayId}-${status}-${event || ''}`;
 
     if (await isDuplicate(eventId)) {
-      return NextResponse.json({ message: 'Evento já processado' }, { status: 200 });
+      return NextResponse.json({ message: 'Evento ja processado' }, { status: 200 });
     }
 
     const { data: pagamentoExistente, error: findError } = await supabaseAdmin
@@ -74,12 +96,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (findError || !pagamentoExistente) {
-      console.error('Pagamento não encontrado:', gatewayId);
-      return NextResponse.json({ message: 'Pagamento não encontrado' }, { status: 404 });
+      console.error('Pagamento nao encontrado:', gatewayId);
+      return NextResponse.json({ message: 'Pagamento nao encontrado' }, { status: 404 });
     }
 
     if (pagamentoExistente.status === 'pago' && status !== 'REFUNDED') {
-      return NextResponse.json({ message: 'Pagamento já processado' }, { status: 200 });
+      return NextResponse.json({ message: 'Pagamento ja processado' }, { status: 200 });
     }
 
     let novoStatus = 'pendente';
@@ -120,8 +142,8 @@ export async function POST(request: NextRequest) {
         .eq('id', pagamentoExistente.beneficiario_id);
 
       if (benefError) {
-        console.error('Erro ao ativar beneficiário:', benefError);
-        return NextResponse.json({ message: 'Erro ao ativar beneficiário' }, { status: 400 });
+        console.error('Erro ao ativar beneficiario:', benefError);
+        return NextResponse.json({ message: 'Erro ao ativar beneficiario' }, { status: 400 });
       }
     }
 
@@ -135,7 +157,7 @@ export async function POST(request: NextRequest) {
         .eq('id', pagamentoExistente.beneficiario_id);
 
       if (benefError) {
-        console.error('Erro ao cancelar beneficiário:', benefError);
+        console.error('Erro ao cancelar beneficiario:', benefError);
       }
     }
 
