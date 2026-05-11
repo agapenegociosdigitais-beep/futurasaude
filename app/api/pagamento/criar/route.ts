@@ -202,7 +202,13 @@ export async function POST(request: NextRequest) {
       }, { status: 200 });
     }
 
-    const valor = VALOR_PLANO_ANUAL;
+    const { data: configValor } = await supabaseAdmin
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'valor_mensalidade')
+      .maybeSingle();
+    const valor = configValor?.valor ? parseFloat(configValor.valor) : VALOR_PLANO_ANUAL;
+
     const cobranca = await criarCobrancaAsaas(beneficiario, valor);
 
     const { data: payment, error: paymentError } = await supabaseAdmin

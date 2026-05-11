@@ -27,6 +27,14 @@ export default function ConfiguracoesDashboard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [whatsappSuporte, setWhatsappSuporte] = useState('');
+
+  useEffect(() => {
+    fetch('/api/config/publico')
+      .then(r => r.json())
+      .then(d => { if (d.whatsapp) setWhatsappSuporte(d.whatsapp); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -211,6 +219,16 @@ export default function ConfiguracoesDashboard() {
                 <p className="text-sm text-gray-600">
                   Para alterar a senha ou desativar a conta, entre em contato pelo WhatsApp do suporte.
                 </p>
+                {whatsappSuporte && (
+                  <a
+                    href={`https://wa.me/${whatsappSuporte.replace(/\D/g, '')}?text=Olá! Preciso de suporte na minha conta Futura Saúde.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg font-semibold text-sm hover:bg-green-200 transition"
+                  >
+                    💬 Falar com suporte
+                  </a>
+                )}
               </div>
             </div>
 
