@@ -9,6 +9,10 @@ function verifyAsaasToken(received: string | null): boolean {
   const expected = process.env.ASAAS_WEBHOOK_TOKEN;
 
   if (!expected) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('ASAAS_WEBHOOK_TOKEN obrigatorio em producao');
+      return false;
+    }
     console.warn('ASAAS_WEBHOOK_TOKEN nao configurado, aceitando webhook em modo dev');
     return true;
   }
@@ -84,6 +88,10 @@ export async function POST(request: NextRequest) {
     const gatewayId = payment.id;
     const status = payment.status;
     const eventId = `${gatewayId}-${status}-${event || ''}`;
+
+    if (event === 'PAYMENT_CREATED') {
+      return NextResponse.json({ message: 'Evento de criacao ignorado' }, { status: 200 });
+    }
 
     if (await isDuplicate(eventId)) {
       return NextResponse.json({ message: 'Evento ja processado' }, { status: 200 });

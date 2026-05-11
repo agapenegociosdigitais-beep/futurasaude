@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futura Saúde — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --azul:#0a2a5e;
+  --azul-medio:#1a4a8a;
+  --dourado:#f5c842;
+  --laranja:#f09a3e;
+  --creme:#fffbf4;
+  --branco:#ffffff;
+  --escuro:#1c1a16;
+  --cinza:#8a8070;
+  --verde:#25d366;
+  --sidebar-w:260px;
+}
+body{font-family:'Sora',sans-serif;background:#f0f2f8;color:var(--escuro);display:flex;min-height:100vh;overflow-x:hidden}
+
+/* SIDEBAR */
+.sidebar{
+  width:var(--sidebar-w);flex-shrink:0;
+  background:var(--azul);
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;
+  z-index:100;
+  transition:transform .3s ease;
+}
+.sidebar-logo{
+  padding:24px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.sidebar-logo .nome{
+  font-size:18px;font-weight:800;color:white;letter-spacing:2px;
+}
+.sidebar-logo .nome span{color:var(--dourado)}
+.sidebar-logo .slogan{
+  font-family:'Lora',serif;font-style:italic;
+  font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;
+}
+.sidebar-user{
+  padding:20px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.avatar{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--dourado);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:16px;color:var(--azul);
+  flex-shrink:0;overflow:hidden;
+}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.user-info .nome{font-size:13px;font-weight:700;color:white}
+.user-info .tipo{font-size:11px;color:rgba(255,255,255,0.45)}
+.nav-menu{padding:16px 0;flex:1}
+.nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 20px;
+  font-size:13px;font-weight:600;
+  color:rgba(255,255,255,0.6);
+  cursor:pointer;
+  transition:all .2s;
+  border-left:3px solid transparent;
+  text-decoration:none;
+}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:white}
+.nav-item.ativo{background:rgba(245,200,66,0.1);color:var(--dourado);border-left-color:var(--dourado)}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.nav-section{
+  padding:8px 20px 4px;
+  font-size:9px;font-weight:700;letter-spacing:2px;
+  color:rgba(255,255,255,0.25);text-transform:uppercase;
+}
+.sidebar-bottom{
+  padding:16px 20px;
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+.btn-sair{
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;color:rgba(255,255,255,0.45);
+  cursor:pointer;transition:color .2s;
+  background:none;border:none;font-family:'Sora',sans-serif;
+}
+.btn-sair:hover{color:#ff7070}
+
+/* MAIN */
+.main{
+  margin-left:var(--sidebar-w);
+  flex:1;display:flex;flex-direction:column;min-height:100vh;
+}
+.topbar{
+  background:white;
+  padding:16px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid #e8e4de;
+  position:sticky;top:0;z-index:50;
+}
+.topbar-title{font-size:16px;font-weight:700;color:var(--azul)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.badge-ativo{
+  background:#e8f5ee;color:#1a7a4a;
+  font-size:11px;font-weight:700;
+  padding:5px 12px;border-radius:20px;
+  border:1px solid #a0d4b8;
+}
+.content{padding:28px;flex:1}
+
+/* CARDS TOPO */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;margin-bottom:28px;
+}
+.stat-card{
+  background:white;border-radius:16px;padding:20px 22px;
+  border:1px solid #e8e4de;
+  display:flex;align-items:center;gap:16px;
+  transition:transform .2s,box-shadow .2s;
+}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08)}
+.stat-icon{
+  width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+}
+.stat-icon.azul{background:#e6f1fb}
+.stat-icon.verde{background:#e8f5ee}
+.stat-icon.dourado{background:#faeeda}
+.stat-icon.roxo{background:#eeedfe}
+.stat-label{font-size:12px;color:var(--cinza);margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:800;color:var(--azul);font-family:'Lora',serif}
+.stat-sub{font-size:11px;color:var(--cinza);margin-top:2px}
+
+/* CARTEIRINHA */
+.carteirinha-wrap{
+  background:white;border-radius:20px;padding:24px;
+  border:1px solid #e8e4de;margin-bottom:28px;
+}
+.section-title{
+  font-size:14px;font-weight:700;color:var(--azul);
+  margin-bottom:20px;display:flex;align-items:center;gap:8px;
+}
+.carteirinha{
+  background:linear-gradient(135deg,var(--azul) 0%,#1a4a8a 60%,#0d3575 100%);
+  border-radius:18px;padding:28px;
+  position:relative;overflow:hidden;
+  max-width:520px;
+}
+.carteirinha::before{
+  content:'';position:absolute;
+  top:-60px;right:-60px;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,200,66,0.15) 0%,transparent 70%);
+}
+.carteirinha::after{
+  content:'';position:absolute;
+  bottom:-40px;left:-40px;
+  width:150px;height:150px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,200,66,0.08) 0%,transparent 70%);
+}
+.card-header{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  margin-bottom:20px;position:relative;z-index:1;
+}
+.card-logo{font-size:13px;font-weight:800;color:white;letter-spacing:2px}
+.card-logo span{color:var(--dourado)}
+.card-validade{
+  text-align:right;
+  font-size:10px;color:rgba(255,255,255,0.5);
+}
+.card-validade strong{display:block;font-size:13px;color:var(--dourado);margin-top:2px}
+.card-body{
+  display:flex;align-items:center;gap:20px;
+  position:relative;z-index:1;
+}
+.card-foto{
+  width:72px;height:72px;border-radius:50%;
+  border:3px solid rgba(245,200,66,0.5);
+  background:rgba(255,255,255,0.1);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;flex-shrink:0;overflow:hidden;cursor:pointer;
+  transition:border-color .2s;position:relative;
+}
+.card-foto:hover{border-color:var(--dourado)}
+.card-foto .upload-hint{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,0.5);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:white;text-align:center;
+  opacity:0;transition:opacity .2s;border-radius:50%;
+}
+.card-foto:hover .upload-hint{opacity:1}
+.card-info{flex:1}
+.card-tipo{font-size:9px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.45);text-transform:uppercase;margin-bottom:4px}
+.card-nome{font-size:18px;font-weight:700;color:white;margin-bottom:4px}
+.card-cpf{font-size:11px;color:rgba(255,255,255,0.5)}
+.card-footer{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  margin-top:20px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,0.1);
+  position:relative;z-index:1;
+}
+.card-numero{font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:2px}
+.card-chip{
+  background:rgba(245,200,66,0.2);
+  border:1px solid rgba(245,200,66,0.3);
+  border-radius:6px;padding:5px 12px;
+  font-size:10px;font-weight:700;color:var(--dourado);
+  letter-spacing:1px;
+}
+.btn-download{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--azul);color:white;
+  font-family:'Sora',sans-serif;font-weight:700;font-size:13px;
+  padding:11px 20px;border-radius:10px;border:none;cursor:pointer;
+  margin-top:16px;transition:background .2s;text-decoration:none;
+}
+.btn-download:hover{background:#1a4a8a}
+
+/* CLINICAS */
+.clinicas-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:16px;
+}
+.clinica-card{
+  background:white;border-radius:16px;padding:20px;
+  border:1px solid #e8e4de;
+  transition:transform .2s,box-shadow .2s;
+  display:flex;flex-direction:column;gap:14px;
+}
+.clinica-card:hover{transform:translateY(-3px);box-shadow:0 10px 32px rgba(0,0,0,0.08)}
+.clinica-header{display:flex;gap:14px;align-items:center}
+.clinica-foto{
+  width:60px;height:60px;border-radius:14px;
+  background:linear-gradient(135deg,#e6f1fb,#b5d4f4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;flex-shrink:0;overflow:hidden;
+}
+.clinica-foto img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+.clinica-nome{font-size:15px;font-weight:700;color:var(--azul);margin-bottom:3px}
+.clinica-esp{
+  display:inline-block;
+  background:#eeedfe;color:#3c3489;
+  font-size:10px;font-weight:700;
+  padding:3px 10px;border-radius:20px;
+}
+.clinica-esp.verde{background:#e8f5ee;color:#1a5c33}
+.clinica-esp.azul{background:#e6f1fb;color:#0c447c}
+.clinica-info{font-size:12px;color:var(--cinza);display:flex;flex-direction:column;gap:5px}
+.clinica-info span{display:flex;align-items:center;gap:6px}
+.clinica-crm{
+  font-size:11px;color:var(--cinza);
+  border-top:1px solid #f0eeea;padding-top:10px;
+}
+.btn-agendar{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:#25d366;color:white;
+  font-family:'Sora',sans-serif;font-weight:700;font-size:13px;
+  padding:12px;border-radius:10px;border:none;cursor:pointer;
+  text-decoration:none;transition:background .2s,transform .2s;
+  margin-top:auto;
+}
+.btn-agendar:hover{background:#1db954;transform:scale(1.02)}
+.btn-agendar svg{width:16px;height:16px;fill:white}
+
+/* ABAS */
+.tabs{display:flex;gap:0;margin-bottom:24px;background:white;border-radius:12px;padding:4px;border:1px solid #e8e4de;width:fit-content}
+.tab{
+  padding:9px 20px;border-radius:9px;
+  font-size:13px;font-weight:600;cursor:pointer;
+  color:var(--cinza);transition:all .2s;border:none;background:none;font-family:'Sora',sans-serif;
+}
+.tab.ativo{background:var(--azul);color:white}
+
+/* MOBILE MENU */
+.menu-toggle{display:none;background:none;border:none;font-size:22px;cursor:pointer;padding:4px}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99}
+
+/* AGENDAMENTOS */
+.agend-lista{display:flex;flex-direction:column;gap:12px}
+.agend-item{
+  background:white;border-radius:14px;padding:18px 20px;
+  border:1px solid #e8e4de;
+  display:flex;align-items:center;gap:16px;
+}
+.agend-data{
+  background:var(--azul);color:white;
+  border-radius:10px;padding:10px 14px;text-align:center;flex-shrink:0;min-width:56px;
+}
+.agend-data .dia{font-size:20px;font-weight:800;font-family:'Lora',serif;line-height:1}
+.agend-data .mes{font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.7}
+.agend-info{flex:1}
+.agend-nome{font-size:14px;font-weight:700;color:var(--azul);margin-bottom:3px}
+.agend-detalhe{font-size:12px;color:var(--cinza)}
+.agend-status{
+  font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;
+}
+.status-confirmado{background:#e8f5ee;color:#1a5c33}
+.status-pendente{background:#fff8e8;color:#8a6000}
+
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.aberta{transform:translateX(0)}
+  .sidebar-overlay.ativo{display:block}
+  .main{margin-left:0}
+  .menu-toggle{display:block}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .content{padding:16px}
+  .clinicas-grid{grid-template-columns:1fr}
+  .carteirinha{max-width:100%}
+}
+
+/* CARTEIRINHA NOVA — inspirada no design */
+.carteirinha-nova {
+  background: linear-gradient(135deg, #0a1f5e 0%, #0d2d7a 40%, #1a4a9a 70%, #1565c0 100%);
+  border-radius: 20px;
+  padding: 28px 28px 0;
+  max-width: 580px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(10,30,94,0.4);
+  font-family: 'Sora', sans-serif;
+}
+.carteirinha-nova::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 60% 30%, rgba(30,80,180,0.6) 0%, transparent 65%);
+  pointer-events: none;
+}
+/* Faixa dourada direita */
+.card-ribbon {
+  position: absolute;
+  top: 0; right: 40px;
+  width: 36px;
+  background: linear-gradient(180deg, #f5c842 0%, #e8a020 60%, #c87800 100%);
+  height: 90px;
+  border-radius: 0 0 8px 8px;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 8px;
+  z-index: 2;
+}
+.card-ribbon .cruz {
+  color: var(--azul);
+  font-size: 20px; font-weight: 900; line-height: 1;
+}
+/* Header */
+.cn-header { position: relative; z-index: 1; margin-bottom: 24px; }
+.cn-logo-nome {
+  font-size: 28px; font-weight: 900; letter-spacing: 1px;
+  color: white;
+}
+.cn-logo-nome span { color: #f5c842; }
+.cn-slogan {
+  font-family: 'Lora', serif; font-style: italic;
+  font-size: 13px; color: rgba(255,255,255,0.6);
+  margin-top: 3px;
+}
+/* Body */
+.cn-body {
+  display: grid; grid-template-columns: 140px 1fr;
+  gap: 20px; position: relative; z-index: 1;
+  margin-bottom: 20px;
+}
+.cn-foto-wrap {
+  display: flex; align-items: center; justify-content: center;
+}
+.cn-foto {
+  width: 120px; height: 120px; border-radius: 50%;
+  border: 4px solid;
+  border-color: #c8900a #f5c842 #e8a020 #f5c842;
+  background: rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; overflow: hidden; position: relative;
+  transition: border-color .2s;
+}
+.cn-foto svg { width: 60px; height: 60px; opacity: .5; }
+.cn-foto .upload-hint {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: white; text-align: center;
+  opacity: 0; transition: opacity .2s; border-radius: 50%;
+  padding: 8px;
+}
+.cn-foto:hover .upload-hint { opacity: 1; }
+.cn-foto:hover { border-color: #f5c842; }
+/* Campos */
+.cn-campos { display: flex; flex-direction: column; gap: 10px; }
+.cn-campo {
+  background: rgba(5,15,50,0.5);
+  border-radius: 8px; padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.cn-campo-label {
+  font-size: 11px; color: #f5c842; font-weight: 600;
+  letter-spacing: 0.5px; margin-bottom: 3px;
+}
+.cn-campo-val {
+  font-size: 16px; font-weight: 700; color: white; letter-spacing: 0.5px;
+}
+.cn-campos-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* Rodapé da carteira */
+.cn-footer {
+  background: rgba(5,15,50,0.6);
+  border-top: 2px solid;
+  border-image: linear-gradient(90deg, #c87800, #f5c842, #c87800) 1;
+  padding: 16px 28px;
+  margin: 0 -28px;
+  position: relative; z-index: 1;
+}
+.cn-footer-tipo {
+  font-size: 11px; color: rgba(255,255,255,0.45);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px;
+}
+.cn-footer-nome {
+  font-size: 24px; font-weight: 800; color: white;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.cn-numero {
+  font-size: 11px; color: rgba(255,255,255,0.3);
+  letter-spacing: 2px; margin-top: 6px;
+}
+</style>
+</head>
+<body>
+
+<!-- OVERLAY MOBILE -->
+<div class="sidebar-overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="nome">FUTURA<span>SAÚDE</span></div>
+    <div class="slogan">Educação e saúde pelo futuro do seu filho</div>
+  </div>
+  <div class="sidebar-user">
+    <div class="avatar">JC</div>
+    <div class="user-info">
+      <div class="nome">João Carlos Silva</div>
+      <div class="tipo">Responsável Financeiro</div>
+    </div>
+  </div>
+  <nav class="nav-menu">
+    <div class="nav-section">Principal</div>
+    <a class="nav-item ativo" onclick="showPage('inicio')">
+      <span class="icon">🏠</span> Início
+    </a>
+    <a class="nav-item" onclick="showPage('carteirinha')">
+      <span class="icon">💳</span> Minha Carteirinha
+    </a>
+    <div class="nav-section">Serviços</div>
+    <a class="nav-item" onclick="showPage('clinicas')">
+      <span class="icon">🏥</span> Rede Credenciada
+    </a>
+    <a class="nav-item" onclick="showPage('agendamentos')">
+      <span class="icon">📅</span> Agendamentos
+    </a>
+    <div class="nav-section">Conta</div>
+    <a class="nav-item" onclick="showPage('perfil')">
+      <span class="icon">👤</span> Meu Perfil
+    </a>
+    <a class="nav-item" onclick="showPage('suporte')">
+      <span class="icon">💬</span> Suporte
+    </a>
+  </nav>
+  <div class="sidebar-bottom">
+    <button class="btn-sair">
+      <span>🚪</span> Sair da conta
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:14px">
+      <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+      <div class="topbar-title" id="topbar-title">Início</div>
+    </div>
+    <div class="topbar-right">
+      <span class="badge-ativo">✅ Plano Ativo</span>
+      <div class="avatar" style="width:34px;height:34px;font-size:13px">JC</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- PÁGINA: INÍCIO -->
+    <div id="page-inicio">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon dourado">🎓</div>
+          <div>
+            <div class="stat-label">Beneficiário</div>
+            <div class="stat-val">Pedro</div>
+            <div class="stat-sub">Plano ativo até Jun/2026</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon verde">🦷</div>
+          <div>
+            <div class="stat-label">Consultas disponíveis</div>
+            <div class="stat-val">3</div>
+            <div class="stat-sub">Dentista · Psicólogo · Optometrista</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon azul">🏥</div>
+          <div>
+            <div class="stat-label">Clínicas parceiras</div>
+            <div class="stat-val">40</div>
+            <div class="stat-sub">Em Santarém — PA</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon roxo">📅</div>
+          <div>
+            <div class="stat-label">Agendamentos</div>
+            <div class="stat-val">1</div>
+            <div class="stat-sub">Próximo: 20 Jun</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARTEIRINHA RÁPIDA -->
+      <div class="carteirinha-wrap">
+        <div class="section-title">💳 Minha Carteirinha</div>
+        <div class="carteirinha-nova" id="carteirinha-render">
+          <div class="card-ribbon"><div class="cruz">✚</div></div>
+          <div class="cn-header">
+            <div class="cn-logo-nome">FUTURA<span>SAÚDE</span></div>
+            <div class="cn-slogan">Educação e saúde pelo futuro do seu filho</div>
+          </div>
+          <div class="cn-body">
+            <div class="cn-foto-wrap">
+              <div class="cn-foto" onclick="uploadFoto()" title="Clique para adicionar foto">
+                <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+                <div class="upload-hint">📷<br>Adicionar<br>foto</div>
+              </div>
+            </div>
+            <div class="cn-campos">
+              <div class="cn-campo">
+                <div class="cn-campo-label">CPF:</div>
+                <div class="cn-campo-val">•••.456.789-••</div>
+              </div>
+              <div class="cn-campos-row">
+                <div class="cn-campo">
+                  <div class="cn-campo-label">Data de Nascimento:</div>
+                  <div class="cn-campo-val">15/03/2007</div>
+                </div>
+                <div class="cn-campo">
+                  <div class="cn-campo-label">Validade:</div>
+                  <div class="cn-campo-val" style="color:#f5c842">15/06/2026</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cn-footer">
+            <div class="cn-footer-tipo">Beneficiário</div>
+            <div class="cn-footer-nome">Pedro Carlos Silva</div>
+            <div class="cn-numero">FS-2025-00042 &nbsp;·&nbsp; ATIVO ✓</div>
+          </div>
+        </div>
+        <button class="btn-download" onclick="showPage('carteirinha')">
+          📄 Ver carteirinha completa & baixar PDF
+        </button>
+      </div>
+
+      <!-- PRÓXIMOS AGENDAMENTOS -->
+      <div class="carteirinha-wrap">
+        <div class="section-title">📅 Próximos Agendamentos</div>
+        <div class="agend-lista">
+          <div class="agend-item">
+            <div class="agend-data"><div class="dia">20</div><div class="mes">Jun</div></div>
+            <div class="agend-info">
+              <div class="agend-nome">Dr. Carlos Mendes — Dentista</div>
+              <div class="agend-detalhe">🏥 Clínica OralVida · ⏰ 14h30</div>
+            </div>
+            <span class="agend-status status-confirmado">Confirmado</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PÁGINA: CARTEIRINHA -->
+    <div id="page-carteirinha" style="display:none">
+      <div class="carteirinha-wrap">
+        <div class="section-title">💳 Carteirinha Virtual — Futura Saúde</div>
+        <div class="carteirinha-nova" id="carteirinha-render-full">
+          <div class="card-ribbon"><div class="cruz">✚</div></div>
+          <div class="cn-header">
+            <div class="cn-logo-nome">FUTURA<span>SAÚDE</span></div>
+            <div class="cn-slogan">Educação e saúde pelo futuro do seu filho</div>
+          </div>
+          <div class="cn-body">
+            <div class="cn-foto-wrap">
+              <div class="cn-foto" onclick="uploadFoto()" title="Clique para adicionar foto">
+                <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+                <div class="upload-hint">📷<br>Adicionar<br>foto</div>
+              </div>
+            </div>
+            <div class="cn-campos">
+              <div class="cn-campo">
+                <div class="cn-campo-label">CPF:</div>
+                <div class="cn-campo-val">•••.456.789-••</div>
+              </div>
+              <div class="cn-campos-row">
+                <div class="cn-campo">
+                  <div class="cn-campo-label">Data de Nascimento:</div>
+                  <div class="cn-campo-val">15/03/2007</div>
+                </div>
+                <div class="cn-campo">
+                  <div class="cn-campo-label">Validade:</div>
+                  <div class="cn-campo-val" style="color:#f5c842">15/06/2026</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cn-footer">
+            <div class="cn-footer-tipo">Beneficiário</div>
+            <div class="cn-footer-nome">Pedro Carlos Silva</div>
+            <div class="cn-numero">FS-2025-00042 &nbsp;·&nbsp; ATIVO ✓</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:20px">
+          <button class="btn-download">📄 Baixar PDF</button>
+          <button class="btn-download" style="background:#e8f5ee;color:#1a5c33;border:1px solid #a0d4b8" onclick="uploadFoto()">📷 Adicionar foto</button>
+        </div>
+        <div style="margin-top:20px;background:#fff8e8;border:1px solid #f0c060;border-radius:10px;padding:14px 16px;font-size:13px;color:#8a6000">
+          💡 <strong>Dica:</strong> Adicione uma foto para que os profissionais possam identificar você na recepção.
+        </div>
+      </div>
+    </div>
+
+    <!-- PÁGINA: REDE CREDENCIADA -->
+    <div id="page-clinicas" style="display:none">
+      <div style="margin-bottom:20px">
+        <div class="tabs">
+          <button class="tab ativo" onclick="filtrarClinica('todos', this)">Todos</button>
+          <button class="tab" onclick="filtrarClinica('dentista', this)">Dentista</button>
+          <button class="tab" onclick="filtrarClinica('psicologo', this)">Psicólogo</button>
+          <button class="tab" onclick="filtrarClinica('optometrista', this)">Optometrista</button>
+        </div>
+      </div>
+      <div class="clinicas-grid" id="clinicas-grid">
+
+        <!-- Clínica 1 -->
+        <div class="clinica-card" data-tipo="dentista">
+          <div class="clinica-header">
+            <div class="clinica-foto">🦷</div>
+            <div>
+              <div class="clinica-nome">Dr. Carlos Mendes</div>
+              <span class="clinica-esp verde">Dentista</span>
+            </div>
+          </div>
+          <div class="clinica-info">
+            <span>🏥 Clínica OralVida Santarém</span>
+            <span>📍 Av. Tapajós, 1250 — Centro</span>
+            <span>⏰ Seg–Sex: 8h às 18h</span>
+          </div>
+          <div class="clinica-crm">CRO-PA: 12.345 · Especialidade: Clínica Geral e Ortodontia</div>
+          <a class="btn-agendar" href="https://wa.me/5593999990001?text=Olá! Sou portador do Cartão Futura Saúde e gostaria de agendar uma consulta." target="_blank">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.535 5.845L.057 23.486a.5.5 0 00.608.63l5.758-1.51A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.9 9.9 0 01-5.031-1.374l-.361-.214-3.735.979.997-3.638-.235-.374A9.857 9.857 0 012.1 12C2.1 6.534 6.534 2.1 12 2.1S21.9 6.534 21.9 12 17.466 21.9 12 21.9z"/></svg>
+            Agendar Consulta
+          </a>
+        </div>
+
+        <!-- Clínica 2 -->
+        <div class="clinica-card" data-tipo="psicologo">
+          <div class="clinica-header">
+            <div class="clinica-foto" style="background:linear-gradient(135deg,#eeedfe,#afa9ec)">🧠</div>
+            <div>
+              <div class="clinica-nome">Dra. Ana Beatriz Lima</div>
+              <span class="clinica-esp">Psicóloga</span>
+            </div>
+          </div>
+          <div class="clinica-info">
+            <span>🏥 Instituto Mente Saudável</span>
+            <span>📍 Rua Siqueira Campos, 380 — Aldeia</span>
+            <span>⏰ Seg–Sáb: 8h às 20h</span>
+          </div>
+          <div class="clinica-crm">CRP-PA: 09.8765 · Especialidade: TCC e Ansiedade</div>
+          <a class="btn-agendar" href="https://wa.me/5593999990002?text=Olá! Sou portador do Cartão Futura Saúde e gostaria de agendar uma consulta." target="_blank">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.535 5.845L.057 23.486a.5.5 0 00.608.63l5.758-1.51A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.9 9.9 0 01-5.031-1.374l-.361-.214-3.735.979.997-3.638-.235-.374A9.857 9.857 0 012.1 12C2.1 6.534 6.534 2.1 12 2.1S21.9 6.534 21.9 12 17.466 21.9 12 21.9z"/></svg>
+            Agendar Consulta
+          </a>
+        </div>
+
+        <!-- Clínica 3 -->
+        <div class="clinica-card" data-tipo="optometrista">
+          <div class="clinica-header">
+            <div class="clinica-foto" style="background:linear-gradient(135deg,#e6f1fb,#85b7eb)">👁️</div>
+            <div>
+              <div class="clinica-nome">Dr. Roberto Farias</div>
+              <span class="clinica-esp azul">Optometrista</span>
+            </div>
+          </div>
+          <div class="clinica-info">
+            <span>🏥 VisãoClara Ótica & Saúde</span>
+            <span>📍 Trav. Francisco Corrêa, 90 — Centro</span>
+            <span>⏰ Seg–Sex: 9h às 17h</span>
+          </div>
+          <div class="clinica-crm">CBO: 2264-40 · Especialidade: Optometria Clínica</div>
+          <a class="btn-agendar" href="https://wa.me/5593999990003?text=Olá! Sou portador do Cartão Futura Saúde e gostaria de agendar uma avaliação de vista." target="_blank">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.535 5.845L.057 23.486a.5.5 0 00.608.63l5.758-1.51A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.9 9.9 0 01-5.031-1.374l-.361-.214-3.735.979.997-3.638-.235-.374A9.857 9.857 0 012.1 12C2.1 6.534 6.534 2.1 12 2.1S21.9 6.534 21.9 12 17.466 21.9 12 21.9z"/></svg>
+            Agendar Consulta
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PÁGINA: AGENDAMENTOS -->
+    <div id="page-agendamentos" style="display:none">
+      <div class="carteirinha-wrap">
+        <div class="section-title">📅 Meus Agendamentos</div>
+        <div class="agend-lista">
+          <div class="agend-item">
+            <div class="agend-data"><div class="dia">20</div><div class="mes">Jun</div></div>
+            <div class="agend-info">
+              <div class="agend-nome">Dr. Carlos Mendes — Dentista</div>
+              <div class="agend-detalhe">🏥 Clínica OralVida · ⏰ 14h30 · 📍 Av. Tapajós, 1250</div>
+            </div>
+            <span class="agend-status status-confirmado">Confirmado</span>
+          </div>
+          <div class="agend-item" style="opacity:.6">
+            <div class="agend-data" style="background:#8a8070"><div class="dia">05</div><div class="mes">Mai</div></div>
+            <div class="agend-info">
+              <div class="agend-nome">Dra. Ana Beatriz — Psicóloga</div>
+              <div class="agend-detalhe">🏥 Instituto Mente Saudável · ⏰ 10h00</div>
+            </div>
+            <span class="agend-status" style="background:#f0eeea;color:#888">Realizado</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PÁGINA: PERFIL -->
+    <div id="page-perfil" style="display:none">
+      <div class="carteirinha-wrap" style="max-width:560px">
+        <div class="section-title">👤 Meu Perfil</div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div style="font-size:11px;color:var(--cinza);margin-bottom:5px;font-weight:600">RESPONSÁVEL FINANCEIRO</div>
+              <div style="font-size:15px;font-weight:700;color:var(--azul)">João Carlos Silva</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--cinza);margin-bottom:5px;font-weight:600">CPF</div>
+              <div style="font-size:15px;color:var(--escuro)">•••.456.789-••</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--cinza);margin-bottom:5px;font-weight:600">BENEFICIÁRIO</div>
+              <div style="font-size:15px;font-weight:700;color:var(--azul)">Pedro Carlos Silva</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--cinza);margin-bottom:5px;font-weight:600">PLANO ATIVO ATÉ</div>
+              <div style="font-size:15px;color:var(--escuro)">15/06/2026</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--cinza);margin-bottom:5px;font-weight:600">WHATSAPP</div>
+              <div style="font-size:15px;color:var(--escuro)">(93) 99999-0001</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--cinza);margin-bottom:5px;font-weight:600">E-MAIL</div>
+              <div style="font-size:15px;color:var(--escuro)">joao@email.com</div>
+            </div>
+          </div>
+          <div style="border-top:1px solid #f0eeea;padding-top:16px">
+            <div style="font-size:11px;color:var(--cinza);margin-bottom:8px;font-weight:600">LGPD — SEUS DADOS</div>
+            <p style="font-size:13px;color:var(--cinza);line-height:1.7">Seus dados são protegidos pela Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018). Você pode solicitar a exclusão dos seus dados a qualquer momento.</p>
+            <a href="https://wa.me/5593992173231?text=Quero solicitar exclusão dos meus dados - LGPD" style="display:inline-block;margin-top:10px;font-size:12px;color:#ff6b6b;text-decoration:underline">Solicitar exclusão dos dados</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PÁGINA: SUPORTE -->
+    <div id="page-suporte" style="display:none">
+      <div class="carteirinha-wrap" style="max-width:480px">
+        <div class="section-title">💬 Suporte</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <a href="https://wa.me/5593992173231?text=Olá! Preciso de suporte Futura Saúde." target="_blank" class="btn-agendar" style="border-radius:12px;padding:16px">
+            <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.535 5.845L.057 23.486a.5.5 0 00.608.63l5.758-1.51A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.9a9.9 9.9 0 01-5.031-1.374l-.361-.214-3.735.979.997-3.638-.235-.374A9.857 9.857 0 012.1 12C2.1 6.534 6.534 2.1 12 2.1S21.9 6.534 21.9 12 17.466 21.9 12 21.9z"/></svg>
+            Falar com suporte via WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+function showPage(page) {
+  const pages = ['inicio','carteirinha','clinicas','agendamentos','perfil','suporte'];
+  const titles = {
+    inicio:'Início', carteirinha:'Minha Carteirinha',
+    clinicas:'Rede Credenciada', agendamentos:'Agendamentos',
+    perfil:'Meu Perfil', suporte:'Suporte'
+  };
+  pages.forEach(p => {
+    document.getElementById('page-'+p).style.display = p===page ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('ativo'));
+  document.querySelectorAll('.nav-item').forEach(el => {
+    if (el.getAttribute('onclick') && el.getAttribute('onclick').includes("'"+page+"'")) {
+      el.classList.add('ativo');
+    }
+  });
+  document.getElementById('topbar-title').textContent = titles[page] || page;
+  if (window.innerWidth <= 768) toggleMenu(false);
+}
+
+function toggleMenu(force) {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  const isOpen = sidebar.classList.contains('aberta');
+  const open = force !== undefined ? force : !isOpen;
+  sidebar.classList.toggle('aberta', open);
+  overlay.classList.toggle('ativo', open);
+}
+
+function uploadFoto() {
+  alert('Em produção: aqui abrirá o seletor de foto para o beneficiário.');
+}
+
+function filtrarClinica(tipo, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
+  btn.classList.add('ativo');
+  document.querySelectorAll('.clinica-card').forEach(card => {
+    card.style.display = (tipo === 'todos' || card.dataset.tipo === tipo) ? 'flex' : 'none';
+  });
+}
+</script>
+</body>
+</html>

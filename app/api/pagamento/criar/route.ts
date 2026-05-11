@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { VALOR_PLANO_ANUAL } from '@/lib/constants';
 
 const ASAAS_URLS = [
   'https://api.asaas.com/v3',
@@ -167,7 +168,9 @@ export async function POST(request: NextRequest) {
       .select('id, gateway_id, status')
       .eq('beneficiario_id', beneficiario_id)
       .eq('status', 'pendente')
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (pagamentoPendente) {
       const cobrancaPendente: any = { id: pagamentoPendente.gateway_id };
@@ -199,7 +202,7 @@ export async function POST(request: NextRequest) {
       }, { status: 200 });
     }
 
-    const valor = 99.90;
+    const valor = VALOR_PLANO_ANUAL;
     const cobranca = await criarCobrancaAsaas(beneficiario, valor);
 
     const { data: payment, error: paymentError } = await supabaseAdmin
