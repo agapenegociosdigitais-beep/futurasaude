@@ -7,31 +7,36 @@ export async function GET(request: NextRequest) {
     const auth = await requireAdmin(request);
     if (!auth.ok) return auth.response;
 
-    // Contar beneficiários ativos
-    const { count: beneficiarios } = await supabaseAdmin
-      .from('beneficiarios')
-      .select('*', { count: 'exact' })
-      .eq('status', 'ativo');
+    const [
+      { count: ativos },
+      { count: total },
+      { count: agendamentosPendentes },
+      pagamentosDiaResult,
+    ] = await Promise.all([
+      supabaseAdmin.from('beneficiarios').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
+      supabaseAdmin.from('beneficiarios').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('agendamentos').select('*', { count: 'exact', head: true }).eq('status', 'pendente'),
+      supabaseAdmin
+        .from('pagamentos')
+        .select('valor')
+        .eq('status', 'pago')
+        .gte('pago_em', `${new Date().toISOString().split('T')[0]}T00:00:00`),
+    ]);
 
-    // Contar pagamentos do dia
-    const today = new Date().toISOString().split('T')[0];
-    const { data: pagamentosDia } = await supabaseAdmin
-      .from('pagamentos')
-      .select('valor')
-      .eq('status', 'pago')
-      .gte('pago_em', `${today}T00:00:00`);
-
-    const totalPagamentosDia = pagamentosDia?.reduce(
-      (sum, p) => sum + parseFloat(p.valor),
-      0
+    const totalPagamentosDia = pagamentosDiaResult.data?.reduce(
+      (sum, p) => sum + parseFloat(p.valor), 0
     ) || 0;
+
+    const taxaAtivacao = total && total > 0
+      ? Math.round(((ativos || 0) / total) * 1000) / 10
+      : 0;
 
     return NextResponse.json(
       {
-        total_beneficiarios: beneficiarios || 0,
+        total_beneficiarios: ativos || 0,
         pagamentos_dia: totalPagamentosDia,
-        taxa_ativacao: 94.2,
-        agendamentos_pendentes: 43,
+        taxa_ativacao: taxaAtivacao,
+        agendamentos_pendentes: agendamentosPendentes || 0,
       },
       { status: 200 }
     );
