@@ -12,10 +12,16 @@ export async function GET(request: NextRequest) {
     const dataFim = searchParams.get('data_fim');
     const filtroCidade = searchParams.get('filtro_cidade');
 
+    const statusFiltro = searchParams.get('status');
+
     let query = supabaseAdmin
       .from('pagamentos')
-      .select('*, beneficiarios(cidade)')
-      .eq('status', 'pago');
+      .select('*, beneficiarios(nome_completo, cidade)')
+      .order('created_at', { ascending: false });
+
+    if (statusFiltro && statusFiltro !== 'todos') {
+      query = query.eq('status', statusFiltro);
+    }
 
     if (dataInicio) query = query.gte('pago_em', dataInicio);
     if (dataFim) query = query.lte('pago_em', dataFim);
@@ -30,10 +36,13 @@ export async function GET(request: NextRequest) {
       data = data.filter((p: any) => p.beneficiarios?.cidade === filtroCidade);
     }
 
-    const total = data?.reduce((sum: number, p: any) => sum + (parseFloat(p.valor) || 0), 0) || 0;
+    const totalPago = data?.filter((p: any) => p.status === 'pago')
+      .reduce((sum: number, p: any) => sum + (parseFloat(p.valor) || 0), 0) || 0;
+    const totalPendente = data?.filter((p: any) => p.status === 'pendente')
+      .reduce((sum: number, p: any) => sum + (parseFloat(p.valor) || 0), 0) || 0;
 
     return NextResponse.json(
-      { pagamentos: data, total, quantidade: data?.length || 0 },
+      { pagamentos: data, total: totalPago, totalPendente, quantidade: data?.length || 0 },
       { status: 200 }
     );
   } catch (error) {
