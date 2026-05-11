@@ -4,7 +4,7 @@ import { VALOR_PLANO_ANUAL } from '@/lib/constants';
 
 const ASAAS_URLS = [
   'https://api.asaas.com/v3',
-  'https://sandbox.asaas.com/v3',
+  'https://sandbox.asaas.com/api/v3',
 ];
 
 async function detectarAmbiente(apiKey: string): Promise<string> {
@@ -227,7 +227,11 @@ export async function POST(request: NextRequest) {
 
     if (paymentError) {
       console.error('Erro ao salvar pagamento:', paymentError);
-      return NextResponse.json({ message: 'Erro ao criar registro de pagamento' }, { status: 400 });
+      return NextResponse.json({
+        message: 'Erro ao criar registro de pagamento',
+        debug: paymentError.message,
+        code: paymentError.code,
+      }, { status: 400 });
     }
 
     return NextResponse.json({
