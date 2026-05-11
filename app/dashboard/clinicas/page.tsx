@@ -73,7 +73,7 @@ export default function ClinicasDashboard() {
 
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold text-[#0a2a5e] mb-8 font-lora">
-          Rede Credenciada
+          Rede de Atendimento
         </h1>
 
         {loading && (

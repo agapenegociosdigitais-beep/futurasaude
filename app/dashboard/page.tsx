@@ -407,7 +407,7 @@ export default function DashboardPage() {
           </button>
           <div className="nav-section">Serviços</div>
           <button className="nav-item" onClick={() => router.push('/dashboard/clinicas')}>
-            <span>🏥</span> Rede Credenciada
+            <span>🏥</span> Rede de Atendimento
           </button>
           <button className="nav-item" onClick={() => router.push('/dashboard/agendamentos')}>
             <span>📅</span> Agendamentos
