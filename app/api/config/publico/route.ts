@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-const PUBLIC_KEYS = ['whatsapp', 'telefone', 'nome_empresa', 'endereco'];
+const PUBLIC_KEYS = ['whatsapp', 'telefone', 'nome_empresa', 'endereco', 'valor_mensalidade'];
 
 export async function GET() {
   try {

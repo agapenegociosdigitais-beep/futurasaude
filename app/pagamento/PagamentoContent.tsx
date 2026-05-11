@@ -11,8 +11,22 @@ export default function PagamentoContent() {
   const [error, setError] = useState('');
   const [pagamentoData, setPagamentoData] = useState<any>(null);
   const [verificandoPagamento, setVerificandoPagamento] = useState(false);
+  const [valorPlano, setValorPlano] = useState('99,90');
+  const [confirmado, setConfirmado] = useState(false);
 
   const beneficiarioId = searchParams.get('beneficiario_id');
+
+  useEffect(() => {
+    fetch('/api/config/publico')
+      .then(r => r.json())
+      .then(d => {
+        if (d.valor_mensalidade) {
+          const num = parseFloat(d.valor_mensalidade);
+          if (!isNaN(num)) setValorPlano(num.toFixed(2).replace('.', ','));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!beneficiarioId) {
@@ -62,8 +76,8 @@ export default function PagamentoContent() {
         if (data.status === 'pago') {
           clearInterval(interval);
           setVerificandoPagamento(false);
-          alert('Pagamento confirmado! Redirecionando para o login...');
-          router.push('/login');
+          setConfirmado(true);
+          setTimeout(() => router.push('/login'), 2500);
         }
       } catch (err) {
         console.error('Erro ao verificar pagamento:', err);
@@ -79,7 +93,7 @@ export default function PagamentoContent() {
   const copiarCodigoPix = () => {
     if (pagamentoData?.pixCopyPaste) {
       navigator.clipboard.writeText(pagamentoData.pixCopyPaste);
-      alert('Código PIX copiado!');
+      // feedback visual — não usar alert()
     }
   };
 
@@ -116,9 +130,14 @@ export default function PagamentoContent() {
           <div className="subtitle">Cartão Futura Saúde - Plano Anual</div>
 
           <div className="price">
-            R$ 99,90 <span>/ano</span>
+            R$ {valorPlano} <span>/ano</span>
           </div>
 
+          {confirmado && (
+            <div style={{ background: '#e8f5ee', border: '2px solid #a0d4b8', borderRadius: '12px', padding: '16px', marginBottom: '16px', textAlign: 'center', color: '#1a5c33', fontWeight: '700' }}>
+              ✅ Pagamento confirmado! Redirecionando para o login...
+            </div>
+          )}
           {error && <div className="error">{error}</div>}
 
           {!pagamentoData ? (

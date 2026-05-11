@@ -9,7 +9,7 @@ type Beneficiario = {
   nome_completo: string;
   cpf: string | null;
   data_nascimento: string | null;
-  numero_carteirinha: string | null;
+  numero_cartao: string | null;
   plano_inicio: string | null;
   plano_fim: string | null;
   status: string | null;
@@ -76,7 +76,7 @@ export default function CarteirinhaDashboard() {
         .num{font-size:22px;font-weight:900;letter-spacing:2px;margin-top:24px;font-family:monospace}</style>
         </head><body><div class="card">
         <h1>FUTURA SAÚDE</h1><p>Cartão de Saúde Digital</p>
-        <div class="num">${b.numero_carteirinha || '—'}</div>
+        <div class="num">${b.numero_cartao || '—'}</div>
         <div class="row">
           <div class="field"><p>Titular</p><p>${b.nome_completo || '—'}</p></div>
           <div class="field"><p>Válida até</p><p>${validUntil}</p></div>
@@ -100,7 +100,7 @@ export default function CarteirinhaDashboard() {
 
   async function handleShare() {
     if (!b) return;
-    const text = `Carteirinha Futura Saúde\nTitular: ${b.nome_completo}\nNº: ${b.numero_carteirinha || '—'}\nVálida até: ${validUntil}`;
+    const text = `Carteirinha Futura Saúde\nTitular: ${b.nome_completo}\nNº: ${b.numero_cartao || '—'}\nVálida até: ${validUntil}`;
     if (typeof navigator !== 'undefined' && navigator.share) {
       await navigator.share({ title: 'Carteirinha Futura Saúde', text });
     } else {
@@ -150,7 +150,7 @@ export default function CarteirinhaDashboard() {
               <div className="grid grid-cols-2 gap-12">
                 <div>
                   <p className="text-xs opacity-80 mb-2">NÚMERO DA CARTEIRINHA</p>
-                  <p className="font-mono text-2xl font-bold">{b.numero_carteirinha || '—'}</p>
+                  <p className="font-mono text-2xl font-bold">{b.numero_cartao || '—'}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs opacity-80 mb-2">VÁLIDA ATÉ</p>

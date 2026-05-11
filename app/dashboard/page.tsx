@@ -55,7 +55,7 @@ export default function DashboardPage() {
   const nomeStorage = typeof window !== 'undefined' ? localStorage.getItem('usuario_nome') : '';
   const nomeExibir = perfil?.nome_completo || beneficiario?.nome || nomeStorage || 'Beneficiário';
   const primeiroNome = nomeExibir.split(' ')[0];
-  const numeroCartao = beneficiario?.numero_carteirinha || 'FS-2025-00001';
+  const numeroCartao = beneficiario?.numero_cartao || 'FS-2025-00001';
   const cpfExibir = beneficiario?.cpf
     ? beneficiario.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
     : '000.000.000-00';
