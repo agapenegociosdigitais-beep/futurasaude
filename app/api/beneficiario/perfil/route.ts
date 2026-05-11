@@ -41,7 +41,42 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const ALLOWED = ['nome_completo', 'whatsapp', 'cidade', 'bairro', 'cep'];
+const ALLOWED = ['nome_completo', 'whatsapp'];
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await getAuthUser(request);
+    if (!user) {
+      return NextResponse.json({ message: 'Nao autorizado' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const update: Record<string, unknown> = {};
+    if ('escola' in body) update.escola = String(body.escola ?? '').trim();
+    if ('cidade' in body) update.cidade = String(body.cidade ?? '').trim();
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ message: 'Nenhum campo valido' }, { status: 400 });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('beneficiarios')
+      .update(update)
+      .eq('responsavel_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ message: 'Erro ao salvar dados do beneficiario' }, { status: 400 });
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch {
+    return NextResponse.json({ message: 'Erro interno' }, { status: 500 });
+  }
+}
+
+const ALLOWED_PERFIL = ['nome_completo', 'whatsapp'];
 
 export async function PUT(request: NextRequest) {
   try {
@@ -52,7 +87,7 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const update: Record<string, unknown> = {};
-    for (const k of ALLOWED) {
+    for (const k of ALLOWED_PERFIL) {
       if (k in body) update[k] = body[k];
     }
 
