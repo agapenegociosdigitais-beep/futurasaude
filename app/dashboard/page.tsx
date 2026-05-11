@@ -456,14 +456,7 @@ export default function DashboardPage() {
                   <div className="stat-icon" style={{ background: '#faeeda' }}>🎓</div>
                   <div><div className="stat-val">{primeiroNome}</div><div className="stat-label">Beneficiário</div></div>
                 </div>
-                <div className="stat-card">
-                  <div className="stat-icon" style={{ background: '#e8f5ee' }}>🦷</div>
-                  <div><div className="stat-val">3</div><div className="stat-label">Consultas disponíveis</div></div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon" style={{ background: '#e6f1fb' }}>🏥</div>
-                  <div><div className="stat-val">40</div><div className="stat-label">Clínicas parceiras</div></div>
-                </div>
+
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: '#eeedfe' }}>📅</div>
                   <div><div className="stat-val" style={{fontSize:'14px'}}>{validadeCartao}</div><div className="stat-label">Válido até</div></div>
