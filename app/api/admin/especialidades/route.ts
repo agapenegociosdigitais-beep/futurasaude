@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/auth';
 
-const ALLOWED_FIELDS = ['nome', 'icone', 'ativa'];
+const ALLOWED_FIELDS = [
+  'nome',
+  'icone_emoji',
+  'icone_url',
+  'tipo_beneficio',
+  'descricao_beneficio',
+  'visivel_beneficiario',
+  'ativo',
+];
+
+const TIPOS_VALIDOS = ['gratuito', 'desconto', 'avaliacao'];
 
 function sanitize(body: Record<string, unknown>) {
   const clean: Record<string, unknown> = {};
@@ -19,17 +29,18 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('especialidades')
-      .select('*');
+      .select('*')
+      .order('nome');
 
     if (error) {
       return NextResponse.json(
-        { message: 'Erro ao buscar especialidades' },
+        { message: 'Erro ao buscar especialidades', detail: error.message },
         { status: 400 }
       );
     }
 
     return NextResponse.json(data, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { message: 'Erro interno do servidor' },
       { status: 500 }
@@ -52,13 +63,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (clean.ativa === undefined) clean.ativa = true;
+    if (!clean.icone_emoji || !String(clean.icone_emoji).trim()) {
+      clean.icone_emoji = '🏥';
+    }
 
-    const existingNome = String(clean.nome).trim().toLowerCase();
+    if (!clean.tipo_beneficio || !TIPOS_VALIDOS.includes(String(clean.tipo_beneficio))) {
+      clean.tipo_beneficio = 'desconto';
+    }
+
+    if (!clean.descricao_beneficio || !String(clean.descricao_beneficio).trim()) {
+      clean.descricao_beneficio = 'Benefício exclusivo Futura Saúde';
+    }
+
+    if (clean.ativo === undefined) clean.ativo = true;
+    if (clean.visivel_beneficiario === undefined) clean.visivel_beneficiario = true;
+
+    clean.nome = String(clean.nome).trim();
+
     const { data: dup } = await supabaseAdmin
       .from('especialidades')
       .select('id')
-      .ilike('nome', existingNome)
+      .ilike('nome', String(clean.nome))
       .maybeSingle();
 
     if (dup) {
@@ -75,14 +100,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      console.error('Erro criar especialidade:', error);
       return NextResponse.json(
-        { message: 'Erro ao criar especialidade' },
+        { message: 'Erro ao criar especialidade', detail: error.message },
         { status: 400 }
       );
     }
 
     return NextResponse.json(data, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Erro interno especialidades POST:', error);
     return NextResponse.json(
       { message: 'Erro interno do servidor' },
       { status: 500 }
