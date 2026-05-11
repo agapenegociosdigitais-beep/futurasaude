@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       beneficiario_data_nascimento,
       beneficiario_parentesco,
       beneficiario_whatsapp,
+      beneficiario_escola,
+      beneficiario_cidade,
     } = body;
 
     if (!nome_completo?.trim()) {
@@ -168,6 +170,8 @@ export async function POST(request: NextRequest) {
           data_nascimento: benNasc || null,
           parentesco: beneficiario_parentesco || 'Titular',
           whatsapp: beneficiario_whatsapp?.replace(/\D/g, '') || '',
+          escola: beneficiario_escola?.trim() || null,
+          cidade: beneficiario_cidade?.trim() || null,
           status: 'pendente',
           sorteio_participa: false,
         })
@@ -192,6 +196,8 @@ export async function POST(request: NextRequest) {
         .update({
           parentesco: beneficiario_parentesco || 'Titular',
           whatsapp: beneficiario_whatsapp?.replace(/\D/g, '') || '',
+          escola: beneficiario_escola?.trim() || null,
+          cidade: beneficiario_cidade?.trim() || null,
         })
         .eq('id', beneficiarioId);
     }

@@ -21,6 +21,8 @@ interface FormData {
   beneficiario_data_nascimento: string;
   beneficiario_parentesco: string;
   beneficiario_whatsapp: string;
+  beneficiario_escola: string;
+  beneficiario_cidade: string;
   password: string;
   password_confirm: string;
   termos: boolean;
@@ -45,6 +47,8 @@ export default function CadastroPage() {
     beneficiario_data_nascimento: '',
     beneficiario_parentesco: 'Filho(a)',
     beneficiario_whatsapp: '',
+    beneficiario_escola: '',
+    beneficiario_cidade: '',
     password: '',
     password_confirm: '',
     termos: false,
@@ -363,6 +367,35 @@ export default function CadastroPage() {
                         value={formData.beneficiario_whatsapp}
                         onChange={handleChange}
                         placeholder="(93) 99999-9999"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                        Escola
+                      </label>
+                      <input
+                        type="text"
+                        name="beneficiario_escola"
+                        value={formData.beneficiario_escola}
+                        onChange={handleChange}
+                        placeholder="Nome da escola"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                        Cidade
+                      </label>
+                      <input
+                        type="text"
+                        name="beneficiario_cidade"
+                        value={formData.beneficiario_cidade}
+                        onChange={handleChange}
+                        placeholder="Cidade"
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
                       />
                     </div>
