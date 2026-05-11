@@ -6,7 +6,8 @@ const DEDUP_TTL_MS = 5 * 60 * 1000;
 let dedupFallback = new Map<string, number>();
 
 function verifyAsaasToken(received: string | null): boolean {
-  const expected = process.env.ASAAS_WEBHOOK_SECRET;
+  // Aceita ambos os nomes para compatibilidade com Vercel (variável pode estar como ASAAS_WEBHOOK_TOKEN)
+  const expected = process.env.ASAAS_WEBHOOK_SECRET || process.env.ASAAS_WEBHOOK_TOKEN;
 
   if (!expected) {
     if (process.env.NODE_ENV === 'production') {
