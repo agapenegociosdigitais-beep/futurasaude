@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -66,7 +66,8 @@ export default function DashboardPage() {
     ? new Date(beneficiario.plano_fim + 'T00:00:00').toLocaleDateString('pt-BR')
     : 'Pendente';
   const statusPlano = beneficiario?.status === 'ativo' ? 'ATIVO' : 'PENDENTE';
-  const cidadeBen = perfil?.cidade || 'Santarém — PA';
+  const cidadeBen = beneficiario?.cidade || perfil?.cidade || 'Santarém — PA';
+  const escolaBen = beneficiario?.escola || '';
 
   // Upload de foto — salva no Supabase Storage
   const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -494,6 +495,16 @@ export default function DashboardPage() {
                         <div className="cn-campo-val" style={{ color: '#f5c842' }}>{validadeCartao}</div>
                       </div>
                     </div>
+                    <div className="cn-campos-row">
+                      <div className="cn-campo">
+                        <div className="cn-campo-label">Escola:</div>
+                        <div className="cn-campo-val">{escolaBen || '—'}</div>
+                      </div>
+                      <div className="cn-campo">
+                        <div className="cn-campo-label">Cidade:</div>
+                        <div className="cn-campo-val">{cidadeBen}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="cn-footer-bar">
@@ -540,6 +551,16 @@ export default function DashboardPage() {
                       <div className="cn-campo">
                         <div className="cn-campo-label">Validade:</div>
                         <div className="cn-campo-val" style={{ color: '#f5c842' }}>{validadeCartao}</div>
+                      </div>
+                    </div>
+                    <div className="cn-campos-row">
+                      <div className="cn-campo">
+                        <div className="cn-campo-label">Escola:</div>
+                        <div className="cn-campo-val">{escolaBen || '—'}</div>
+                      </div>
+                      <div className="cn-campo">
+                        <div className="cn-campo-label">Cidade:</div>
+                        <div className="cn-campo-val">{cidadeBen}</div>
                       </div>
                     </div>
                   </div>
