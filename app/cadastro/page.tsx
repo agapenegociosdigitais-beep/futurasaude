@@ -68,10 +68,7 @@ export default function CadastroPage() {
         !formData.nome_completo ||
         !formData.cpf ||
         !formData.email ||
-        !formData.whatsapp ||
-        !formData.data_nascimento ||
-        !formData.cidade ||
-        !formData.bairro
+        !formData.whatsapp
       ) {
         setError('Preencha todos os campos obrigatórios');
         return;
@@ -246,32 +243,18 @@ export default function CadastroPage() {
                     />
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
-                        CPF *
-                      </label>
-                      <input
-                        type="text"
-                        name="cpf"
-                        value={formData.cpf}
-                        onChange={handleChange}
-                        placeholder="000.000.000-00"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
-                        Data de Nascimento *
-                      </label>
-                      <input
-                        type="date"
-                        name="data_nascimento"
-                        value={formData.data_nascimento}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                      CPF *
+                    </label>
+                    <input
+                      type="text"
+                      name="cpf"
+                      value={formData.cpf}
+                      onChange={handleChange}
+                      placeholder="000.000.000-00"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    />
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
@@ -298,52 +281,6 @@ export default function CadastroPage() {
                         value={formData.whatsapp}
                         onChange={handleChange}
                         placeholder="(93) 99999-9999"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
-                        Cidade *
-                      </label>
-                      <select
-                        name="cidade"
-                        value={formData.cidade}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                      >
-                        <option>Santarém</option>
-                        <option>Itaituba</option>
-                        <option>Altamira</option>
-                        <option>Marabá</option>
-                        <option>Outra</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
-                        Bairro *
-                      </label>
-                      <input
-                        type="text"
-                        name="bairro"
-                        value={formData.bairro}
-                        onChange={handleChange}
-                        placeholder="Centro"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
-                        CEP
-                      </label>
-                      <input
-                        type="text"
-                        name="cep"
-                        value={formData.cep}
-                        onChange={handleChange}
-                        placeholder="68000-000"
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
                       />
                     </div>
