@@ -6,14 +6,14 @@ const DEDUP_TTL_MS = 5 * 60 * 1000;
 let dedupFallback = new Map<string, number>();
 
 function verifyAsaasToken(received: string | null): boolean {
-  const expected = process.env.ASAAS_WEBHOOK_TOKEN;
+  const expected = process.env.ASAAS_WEBHOOK_SECRET;
 
   if (!expected) {
     if (process.env.NODE_ENV === 'production') {
-      console.error('ASAAS_WEBHOOK_TOKEN obrigatorio em producao');
+      console.error('ASAAS_WEBHOOK_SECRET obrigatorio em producao');
       return false;
     }
-    console.warn('ASAAS_WEBHOOK_TOKEN nao configurado, aceitando webhook em modo dev');
+    console.warn('ASAAS_WEBHOOK_SECRET nao configurado, aceitando webhook em modo dev');
     return true;
   }
 
