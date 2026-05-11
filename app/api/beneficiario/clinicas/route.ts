@@ -20,7 +20,10 @@ export async function GET(request: NextRequest) {
     const cidade = searchParams.get('cidade');
     const especialidade = searchParams.get('especialidade');
 
-    let query = supabaseAdmin.from('clinicas').select('*').eq('ativo', true);
+    let query = supabaseAdmin
+      .from('clinicas')
+      .select('*, especialidades(nome, icone_emoji)')
+      .eq('ativo', true);
 
     if (cidade) query = query.eq('cidade', cidade);
     if (especialidade) {
@@ -41,7 +44,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Erro ao buscar clinicas' }, { status: 400 });
     }
 
-    return NextResponse.json(data, { status: 200 });
+    const mapped = (data || []).map((c: any) => ({
+      id: c.id,
+      nome_clinica: c.nome_clinica,
+      nome_profissional: c.nome_profissional,
+      especialidade_nome: c.especialidades?.nome || '',
+      especialidade_icone: c.especialidades?.icone_emoji || '🏥',
+      foto_url: c.foto_url,
+      endereco: c.endereco,
+      bairro: c.bairro,
+      cidade: c.cidade,
+      whatsapp: c.whatsapp,
+      horario: c.horario,
+      avaliacao: c.avaliacao,
+    }));
+
+    return NextResponse.json(mapped, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
   }

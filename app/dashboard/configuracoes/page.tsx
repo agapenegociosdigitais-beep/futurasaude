@@ -2,38 +2,99 @@
 
 import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-export default function ConfiguracesDashboard() {
-  const [settings, setSettings] = useState({
-    nome: 'João da Silva',
-    email: 'joao@email.com',
-    whatsapp: '(93) 99999-9999',
-    notificacoes_email: true,
-    notificacoes_whatsapp: true,
-    compartilhar_perfil: false,
-  });
+type Perfil = {
+  id: string;
+  nome_completo: string;
+  email: string;
+  whatsapp: string;
+  cidade: string;
+  bairro: string;
+  cep: string;
+};
 
+function fmtWhats(s: string) {
+  const d = s.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+export default function ConfiguracoesDashboard() {
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const { name, value, type } = e.target;
-    setSettings({
-      ...settings,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    });
-  };
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/beneficiario/perfil');
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.message || 'Erro ao carregar perfil');
+        }
+        const data = await res.json();
+        const p = data.perfil || {};
+        setPerfil({
+          id: p.id || '',
+          nome_completo: p.nome_completo || '',
+          email: p.email || '',
+          whatsapp: p.whatsapp || '',
+          cidade: p.cidade || '',
+          bairro: p.bairro || '',
+          cep: p.cep || '',
+        });
+      } catch (err: any) {
+        setError(err.message || 'Erro ao carregar perfil');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  function setField<K extends keyof Perfil>(k: K, v: Perfil[K]) {
+    setPerfil((prev) => (prev ? { ...prev, [k]: v } : prev));
+  }
+
+  async function handleSave() {
+    if (!perfil) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/beneficiario/perfil', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome_completo: perfil.nome_completo,
+          whatsapp: perfil.whatsapp,
+          cidade: perfil.cidade,
+          bairro: perfil.bairro,
+          cep: perfil.cep,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || 'Erro ao salvar');
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
-      <Link href="/dashboard" className="flex items-center gap-2 text-[#0a2a5e] font-semibold mb-8 hover:underline">
+      <Link
+        href="/dashboard"
+        className="flex items-center gap-2 text-[#0a2a5e] font-semibold mb-8 hover:underline"
+      >
         <ArrowLeft className="w-5 h-5" />
         Voltar
       </Link>
@@ -43,145 +104,128 @@ export default function ConfiguracesDashboard() {
           Configurações
         </h1>
 
-        <div className="bg-white rounded-xl border-2 border-gray-300 p-8 space-y-8">
-          {/* Perfil */}
-          <div>
-            <h2 className="text-2xl font-bold text-[#0a2a5e] mb-6 font-lora">
-              Meu Perfil
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
-                  Nome Completo
-                </label>
-                <input
-                  type="text"
-                  name="nome"
-                  value={settings.nome}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                />
-              </div>
+        {loading && (
+          <div className="text-center py-12">
+            <p className="text-gray-600 text-lg">Carregando...</p>
+          </div>
+        )}
 
-              <div>
-                <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={settings.email}
-                  onChange={handleChange}
-                  disabled
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                />
-                <p className="text-xs text-gray-500 mt-1">Email não pode ser alterado</p>
-              </div>
+        {error && !loading && (
+          <div className="bg-red-50 border-2 border-red-300 text-red-700 p-4 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
 
-              <div>
-                <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
-                  WhatsApp
-                </label>
-                <input
-                  type="tel"
-                  name="whatsapp"
-                  value={settings.whatsapp}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                />
+        {perfil && !loading && (
+          <div className="bg-white rounded-xl border-2 border-gray-300 p-8 space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold text-[#0a2a5e] mb-6 font-lora">
+                Meu Perfil
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                    Nome Completo
+                  </label>
+                  <input
+                    type="text"
+                    value={perfil.nome_completo}
+                    onChange={(e) => setField('nome_completo', e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={perfil.email}
+                    disabled
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Email não pode ser alterado</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                    WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    value={fmtWhats(perfil.whatsapp)}
+                    onChange={(e) => setField('whatsapp', e.target.value.replace(/\D/g, ''))}
+                    placeholder="(00) 00000-0000"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                      Cidade
+                    </label>
+                    <input
+                      type="text"
+                      value={perfil.cidade}
+                      onChange={(e) => setField('cidade', e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                      Bairro
+                    </label>
+                    <input
+                      type="text"
+                      value={perfil.bairro}
+                      onChange={(e) => setField('bairro', e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#0a2a5e] mb-2">
+                    CEP
+                  </label>
+                  <input
+                    type="text"
+                    value={perfil.cep}
+                    onChange={(e) => setField('cep', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    placeholder="00000000"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <hr className="my-8 border-gray-300" />
+            <hr className="my-8 border-gray-300" />
 
-          {/* Notificações */}
-          <div>
-            <h2 className="text-2xl font-bold text-[#0a2a5e] mb-6 font-lora">
-              Notificações
-            </h2>
-            <div className="space-y-4">
-              <label className="flex items-center p-4 border-2 border-gray-300 rounded-lg hover:border-[#f5c842] transition cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="notificacoes_email"
-                  checked={settings.notificacoes_email}
-                  onChange={handleChange}
-                  className="w-5 h-5 rounded"
-                />
-                <div className="ml-4">
-                  <p className="font-semibold text-[#0a2a5e]">Notificações por Email</p>
-                  <p className="text-sm text-gray-600">
-                    Receba atualizações sobre agendamentos
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex items-center p-4 border-2 border-gray-300 rounded-lg hover:border-[#f5c842] transition cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="notificacoes_whatsapp"
-                  checked={settings.notificacoes_whatsapp}
-                  onChange={handleChange}
-                  className="w-5 h-5 rounded"
-                />
-                <div className="ml-4">
-                  <p className="font-semibold text-[#0a2a5e]">Notificações por WhatsApp</p>
-                  <p className="text-sm text-gray-600">
-                    Receba lembretes no seu WhatsApp
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex items-center p-4 border-2 border-gray-300 rounded-lg hover:border-[#f5c842] transition cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="compartilhar_perfil"
-                  checked={settings.compartilhar_perfil}
-                  onChange={handleChange}
-                  className="w-5 h-5 rounded"
-                />
-                <div className="ml-4">
-                  <p className="font-semibold text-[#0a2a5e]">Compartilhar Perfil Públicamente</p>
-                  <p className="text-sm text-gray-600">
-                    Permitir que outros vejam seus agendamentos (apenas estatísticas)
-                  </p>
-                </div>
-              </label>
+            <div>
+              <h2 className="text-2xl font-bold text-[#0a2a5e] mb-6 font-lora">
+                Segurança
+              </h2>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Para alterar a senha ou desativar a conta, entre em contato pelo WhatsApp do suporte.
+                </p>
+              </div>
             </div>
-          </div>
 
-          <hr className="my-8 border-gray-300" />
-
-          {/* Segurança */}
-          <div>
-            <h2 className="text-2xl font-bold text-[#0a2a5e] mb-6 font-lora">
-              Segurança
-            </h2>
-            <div className="space-y-4">
-              <button className="w-full px-6 py-3 border-2 border-gray-300 text-[#0a2a5e] rounded-lg font-semibold hover:bg-gray-50 transition text-left">
-                Alterar Senha
-              </button>
-              <button className="w-full px-6 py-3 border-2 border-red-300 text-red-600 rounded-lg font-semibold hover:bg-red-50 transition text-left">
-                Desativar Conta
+            <div className="flex gap-4 pt-8">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 px-6 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-lg font-bold hover:bg-[#f0b820] transition flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Save className="w-5 h-5" />
+                {saving ? 'Salvando...' : saved ? 'Salvo!' : 'Salvar Mudanças'}
               </button>
             </div>
           </div>
-
-          {/* Save Button */}
-          <div className="flex gap-4 pt-8">
-            <button
-              onClick={handleSave}
-              className="flex-1 px-6 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-lg font-bold hover:bg-[#f0b820] transition flex items-center justify-center gap-2"
-            >
-              <Save className="w-5 h-5" />
-              {saved ? 'Salvo!' : 'Salvar Mudanças'}
-            </button>
-            <button className="px-6 py-3 border-2 border-gray-300 text-[#0a2a5e] rounded-lg font-bold hover:bg-gray-50 transition">
-              Cancelar
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
