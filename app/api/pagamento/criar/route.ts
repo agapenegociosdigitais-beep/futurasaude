@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
 
     if (paymentError) {
       console.error('Erro ao salvar pagamento:', paymentError);
-      return NextResponse.json({ message: 'Erro ao criar registro de pagamento' }, { status: 400 });
+      return NextResponse.json({ message: 'Erro ao criar registro de pagamento', debug: paymentError.message, code: paymentError.code }, { status: 400 });
     }
 
     return NextResponse.json({
