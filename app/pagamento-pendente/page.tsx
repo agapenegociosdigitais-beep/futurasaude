@@ -1,9 +1,59 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function PagamentoPendentePage() {
   const router = useRouter();
+  const [beneficiarioId, setBeneficiarioId] = useState<string | null>(null);
+  const [verificando, setVerificando] = useState(true);
+
+  useEffect(() => {
+    async function verificar() {
+      try {
+        const res = await fetch('/api/beneficiario/perfil');
+        if (!res.ok) {
+          setVerificando(false);
+          return;
+        }
+        const data = await res.json();
+        const benId = data.beneficiario?.id;
+        setBeneficiarioId(benId || null);
+
+        if (data.beneficiario?.status === 'ativo') {
+          router.replace('/dashboard');
+          return;
+        }
+
+        if (benId) {
+          const pagRes = await fetch(`/api/pagamento/pendente/${benId}`);
+          if (pagRes.ok) {
+            const pag = await pagRes.json();
+            if (pag.pagamento_id) {
+              const statusRes = await fetch(`/api/pagamento/status/${pag.pagamento_id}`);
+              if (statusRes.ok) {
+                const statusData = await statusRes.json();
+                if (statusData.status === 'pago') {
+                  router.replace('/dashboard');
+                  return;
+                }
+              }
+            }
+          }
+        }
+      } catch {}
+      setVerificando(false);
+    }
+    verificar();
+  }, [router]);
+
+  if (verificando) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-500">Verificando pagamento...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -20,7 +70,13 @@ export default function PagamentoPendentePage() {
         </p>
         <div className="space-y-3">
           <button
-            onClick={() => router.push('/pagamento')}
+            onClick={() => {
+              if (beneficiarioId) {
+                router.push(`/pagamento?beneficiario_id=${beneficiarioId}`);
+              } else {
+                router.push('/pagamento');
+              }
+            }}
             className="w-full bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700 transition font-medium"
           >
             Ir para Pagamento
