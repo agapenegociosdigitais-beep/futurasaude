@@ -1,7 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Edit, Trash2, Building2, Upload, X, Image as ImageIcon, MapPin, Loader2 } from 'lucide-react';
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Building2,
+  Upload,
+  X,
+  Image as ImageIcon,
+  MapPin,
+  Loader2,
+  Search,
+  ExternalLink,
+  Globe,
+} from 'lucide-react';
 
 interface Especialidade {
   id: string;
@@ -27,6 +40,44 @@ interface Clinica {
   total_agendamentos: number;
   ativo: boolean;
   criado_em: string;
+  google_place_id: string;
+  google_maps_url: string;
+  website: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+interface GoogleCandidate {
+  place_id: string;
+  nome: string;
+  endereco_resumido: string;
+  google_maps_url: string;
+  avaliacao: number | null;
+  total_avaliacoes: number | null;
+  tipo_google: string | null;
+  business_status: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+interface GooglePreview {
+  google_place_id: string;
+  nome: string;
+  telefone: string | null;
+  endereco: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+  website: string | null;
+  google_maps_url: string;
+  foto_url: string | null;
+  horario: string | null;
+  avaliacao: number | null;
+  total_avaliacoes: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  tipo_google: string | null;
+  business_status: string | null;
 }
 
 const emptyForm = {
@@ -41,6 +92,11 @@ const emptyForm = {
   whatsapp: '',
   horario: '',
   ativo: true,
+  google_place_id: '',
+  google_maps_url: '',
+  website: '',
+  latitude: null as number | null,
+  longitude: null as number | null,
 };
 
 export default function ClinicasAdmin() {
@@ -56,11 +112,14 @@ export default function ClinicasAdmin() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showImport, setShowImport] = useState(false);
-  const [importUrl, setImportUrl] = useState('');
+  const [importQuery, setImportQuery] = useState('');
+  const [importCidade, setImportCidade] = useState('');
+  const [importBairro, setImportBairro] = useState('');
   const [importEspId, setImportEspId] = useState('');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
-  const [importPreview, setImportPreview] = useState<any>(null);
+  const [importCandidates, setImportCandidates] = useState<GoogleCandidate[]>([]);
+  const [importPreview, setImportPreview] = useState<GooglePreview | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const blobUrlRef = useRef<string>('');
@@ -109,6 +168,16 @@ export default function ClinicasAdmin() {
     }
   }, []);
 
+  const resetImportState = () => {
+    setImportQuery('');
+    setImportCidade('');
+    setImportBairro('');
+    setImportEspId('');
+    setImportCandidates([]);
+    setImportPreview(null);
+    setImportError('');
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
@@ -132,6 +201,11 @@ export default function ClinicasAdmin() {
       whatsapp: c.whatsapp || '',
       horario: c.horario || '',
       ativo: c.ativo,
+      google_place_id: c.google_place_id || '',
+      google_maps_url: c.google_maps_url || '',
+      website: c.website || '',
+      latitude: c.latitude ?? null,
+      longitude: c.longitude ?? null,
     });
     setLogoPreview(c.foto_url || '');
     setError('');
@@ -205,9 +279,9 @@ export default function ClinicasAdmin() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleImport = async () => {
-    if (!importUrl.trim()) {
-      setImportError('Cole o link do Google Maps');
+  const handleImportSearch = async () => {
+    if (!importQuery.trim()) {
+      setImportError('Informe o nome da clínica ou profissional');
       return;
     }
     if (!importEspId) {
@@ -217,23 +291,62 @@ export default function ClinicasAdmin() {
 
     setImporting(true);
     setImportError('');
+    setImportCandidates([]);
     setImportPreview(null);
 
     try {
       const res = await fetch('/api/admin/clinicas/import-google', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ url: importUrl, especialidade_id: importEspId }),
+        body: JSON.stringify({
+          mode: 'search',
+          query: importQuery,
+          cidade: importCidade,
+          bairro: importBairro,
+          especialidade_id: importEspId,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setImportCandidates(data.candidates || []);
+        if (!data.candidates?.length) {
+          setImportError('Nenhum resultado encontrado. Tente refinar a busca.');
+        }
+      } else {
+        setImportError(data.message || 'Erro ao buscar no Google');
+      }
+    } catch {
+      setImportError('Erro de conexão ao buscar no Google');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleSelectCandidate = async (candidate: GoogleCandidate) => {
+    setImporting(true);
+    setImportError('');
+    setImportPreview(null);
+
+    try {
+      const res = await fetch('/api/admin/clinicas/import-google', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          mode: 'details',
+          place_id: candidate.place_id,
+          especialidade_id: importEspId,
+        }),
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
         setImportPreview(data.data);
       } else {
-        setImportError(data.message || 'Erro ao importar dados');
+        setImportError(data.message || 'Erro ao carregar detalhes do local');
       }
     } catch {
-      setImportError('Erro de conexão ao importar');
+      setImportError('Erro de conexão ao carregar detalhes do local');
     } finally {
       setImporting(false);
     }
@@ -253,15 +366,17 @@ export default function ClinicasAdmin() {
       whatsapp: importPreview.telefone || '',
       horario: importPreview.horario || '',
       ativo: true,
+      google_place_id: importPreview.google_place_id || '',
+      google_maps_url: importPreview.google_maps_url || '',
+      website: importPreview.website || '',
+      latitude: importPreview.latitude ?? null,
+      longitude: importPreview.longitude ?? null,
     });
     if (importPreview.foto_url) {
       setLogoPreview(importPreview.foto_url);
     }
     setShowImport(false);
-    setImportUrl('');
-    setImportEspId('');
-    setImportPreview(null);
-    setImportError('');
+    resetImportState();
     setShowModal(true);
   };
 
@@ -390,11 +505,14 @@ export default function ClinicasAdmin() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => setShowImport(true)}
+            onClick={() => {
+              resetImportState();
+              setShowImport(true);
+            }}
             className="px-6 py-3 border-2 border-[#0a2a5e] text-[#0a2a5e] rounded-xl font-bold hover:bg-[#0a2a5e]/5 transition flex items-center gap-2"
           >
             <MapPin className="w-5 h-5" />
-            Importar do Google
+            Buscar no Google
           </button>
           <button
             onClick={openCreate}
@@ -468,8 +586,33 @@ export default function ClinicasAdmin() {
               </div>
 
               {clinic.endereco && (
-                <p className="text-sm text-gray-500 mb-4">{clinic.endereco}</p>
+                <p className="text-sm text-gray-500 mb-2">{clinic.endereco}</p>
               )}
+
+              <div className="flex flex-wrap gap-3 mb-4 text-sm">
+                {clinic.website && (
+                  <a
+                    href={clinic.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#0a2a5e] font-semibold hover:underline inline-flex items-center gap-1"
+                  >
+                    <Globe className="w-4 h-4" />
+                    Website
+                  </a>
+                )}
+                {clinic.google_maps_url && (
+                  <a
+                    href={clinic.google_maps_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#0a2a5e] font-semibold hover:underline inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Abrir no Google Maps
+                  </a>
+                )}
+              </div>
 
               <div className="flex gap-2 justify-end">
                 <button
@@ -666,6 +809,29 @@ export default function ClinicasAdmin() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Website</label>
+                  <input
+                    type="url"
+                    value={form.website}
+                    onChange={(e) => setForm({ ...form, website: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    placeholder="https://site-da-clinica.com.br"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Link Google Maps</label>
+                  <input
+                    type="url"
+                    value={form.google_maps_url}
+                    onChange={(e) => setForm({ ...form, google_maps_url: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                    placeholder="https://maps.google.com/..."
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -701,14 +867,17 @@ export default function ClinicasAdmin() {
 
       {showImport && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-[#0a2a5e] flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                Importar do Google Maps
+                Buscar clínica no Google
               </h2>
               <button
-                onClick={() => { setShowImport(false); setImportPreview(null); setImportError(''); }}
+                onClick={() => {
+                  setShowImport(false);
+                  resetImportState();
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />
@@ -723,124 +892,226 @@ export default function ClinicasAdmin() {
 
             {!importPreview ? (
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Link do Google Maps ou Meu Negócio *
-                  </label>
-                  <input
-                    type="url"
-                    value={importUrl}
-                    onChange={(e) => setImportUrl(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
-                    placeholder="https://maps.google.com/... ou https://share.google/..."
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Cole o link completo do estabelecimento no Google Maps
-                  </p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Nome da clínica ou do profissional *
+                    </label>
+                    <input
+                      type="text"
+                      value={importQuery}
+                      onChange={(e) => setImportQuery(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                      placeholder="Ex: Clínica Saúde Vida ou Dra. Maria Silva"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Especialidade *
+                    </label>
+                    <select
+                      value={importEspId}
+                      onChange={(e) => setImportEspId(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none bg-white"
+                    >
+                      <option value="">Selecione...</option>
+                      {especialidades.map((esp) => (
+                        <option key={esp.id} value={esp.id}>
+                          {esp.icone_emoji} {esp.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Especialidade *
-                  </label>
-                  <select
-                    value={importEspId}
-                    onChange={(e) => setImportEspId(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none bg-white"
-                  >
-                    <option value="">Selecione...</option>
-                    {especialidades.map((esp) => (
-                      <option key={esp.id} value={esp.id}>
-                        {esp.icone_emoji} {esp.nome}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Cidade da clínica
+                    </label>
+                    <input
+                      type="text"
+                      value={importCidade}
+                      onChange={(e) => setImportCidade(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                      placeholder="Ex: Santarém"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Bairro (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={importBairro}
+                      onChange={(e) => setImportBairro(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none"
+                      placeholder="Ex: Aldeia"
+                    />
+                  </div>
                 </div>
 
                 <button
-                  onClick={handleImport}
+                  onClick={handleImportSearch}
                   disabled={importing}
                   className="w-full px-4 py-3 bg-[#0a2a5e] text-white rounded-xl font-bold hover:bg-[#0a2a5e]/90 transition flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {importing ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Importando dados...
+                      Buscando clínicas...
                     </>
                   ) : (
                     <>
-                      <MapPin className="w-5 h-5" />
-                      Buscar Dados
+                      <Search className="w-5 h-5" />
+                      Buscar clínicas no Google
                     </>
                   )}
                 </button>
+
+                {importCandidates.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <p className="text-sm font-semibold text-[#0a2a5e]">Selecione a clínica correta:</p>
+                    {importCandidates.map((candidate) => (
+                      <div
+                        key={candidate.place_id}
+                        className="border border-gray-200 rounded-xl p-4 hover:border-[#f5c842] transition"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="font-bold text-[#0a2a5e]">{candidate.nome}</p>
+                            <p className="text-sm text-gray-600 mt-1">{candidate.endereco_resumido || 'Endereço não informado'}</p>
+                            <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+                              {candidate.tipo_google && <span>Tipo: {candidate.tipo_google}</span>}
+                              {candidate.avaliacao !== null && (
+                                <span>
+                                  Avaliação: {candidate.avaliacao}
+                                  {candidate.total_avaliacoes ? ` (${candidate.total_avaliacoes})` : ''}
+                                </span>
+                              )}
+                              {candidate.business_status && <span>Status: {candidate.business_status}</span>}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            {candidate.google_maps_url && (
+                              <a
+                                href={candidate.google_maps_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-[#0a2a5e] hover:underline inline-flex items-center gap-1"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Ver no Maps
+                              </a>
+                            )}
+                            <button
+                              onClick={() => handleSelectCandidate(candidate)}
+                              disabled={importing}
+                              className="px-4 py-2 bg-[#f5c842] text-[#0a2a5e] rounded-lg font-bold hover:bg-[#f0b820] transition disabled:opacity-50"
+                            >
+                              Usar este resultado
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                  <p className="text-sm text-green-700 font-semibold mb-2">Dados encontrados:</p>
-                  <div className="space-y-2">
+                  <p className="text-sm text-green-700 font-semibold mb-3">Dados encontrados no Google:</p>
+                  <div className="space-y-2 text-sm">
                     {importPreview.nome && (
                       <div className="flex gap-2">
-                        <span className="text-xs text-gray-500 w-20">Nome:</span>
+                        <span className="text-gray-500 w-28">Nome:</span>
                         <span className="font-semibold text-[#0a2a5e]">{importPreview.nome}</span>
                       </div>
                     )}
                     {importPreview.telefone && (
                       <div className="flex gap-2">
-                        <span className="text-xs text-gray-500 w-20">Telefone:</span>
+                        <span className="text-gray-500 w-28">Telefone:</span>
                         <span className="font-semibold text-[#0a2a5e]">{importPreview.telefone}</span>
                       </div>
                     )}
                     {importPreview.endereco && (
                       <div className="flex gap-2">
-                        <span className="text-xs text-gray-500 w-20">Endereço:</span>
+                        <span className="text-gray-500 w-28">Endereço:</span>
                         <span className="font-semibold text-[#0a2a5e]">{importPreview.endereco}</span>
-                      </div>
-                    )}
-                    {importPreview.cidade && (
-                      <div className="flex gap-2">
-                        <span className="text-xs text-gray-500 w-20">Cidade:</span>
-                        <span className="font-semibold text-[#0a2a5e]">{importPreview.cidade}</span>
                       </div>
                     )}
                     {importPreview.bairro && (
                       <div className="flex gap-2">
-                        <span className="text-xs text-gray-500 w-20">Bairro:</span>
+                        <span className="text-gray-500 w-28">Bairro:</span>
                         <span className="font-semibold text-[#0a2a5e]">{importPreview.bairro}</span>
+                      </div>
+                    )}
+                    {importPreview.cidade && (
+                      <div className="flex gap-2">
+                        <span className="text-gray-500 w-28">Cidade:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{importPreview.cidade}</span>
                       </div>
                     )}
                     {importPreview.horario && (
                       <div className="flex gap-2">
-                        <span className="text-xs text-gray-500 w-20">Horário:</span>
+                        <span className="text-gray-500 w-28">Horário:</span>
                         <span className="font-semibold text-[#0a2a5e]">{importPreview.horario}</span>
                       </div>
                     )}
-                    {importPreview.avaliacao > 0 && (
+                    {importPreview.website && (
                       <div className="flex gap-2">
-                        <span className="text-xs text-gray-500 w-20">Avaliação:</span>
-                        <span className="font-semibold text-[#0a2a5e]">{'⭐'.repeat(Math.round(importPreview.avaliacao))} {importPreview.avaliacao}</span>
+                        <span className="text-gray-500 w-28">Website:</span>
+                        <a href={importPreview.website} target="_blank" rel="noreferrer" className="font-semibold text-[#0a2a5e] hover:underline break-all">
+                          {importPreview.website}
+                        </a>
+                      </div>
+                    )}
+                    {importPreview.google_maps_url && (
+                      <div className="flex gap-2">
+                        <span className="text-gray-500 w-28">Google Maps:</span>
+                        <a href={importPreview.google_maps_url} target="_blank" rel="noreferrer" className="font-semibold text-[#0a2a5e] hover:underline break-all">
+                          Abrir no Google Maps
+                        </a>
+                      </div>
+                    )}
+                    {importPreview.avaliacao !== null && (
+                      <div className="flex gap-2">
+                        <span className="text-gray-500 w-28">Avaliação:</span>
+                        <span className="font-semibold text-[#0a2a5e]">
+                          {importPreview.avaliacao}
+                          {importPreview.total_avaliacoes ? ` (${importPreview.total_avaliacoes})` : ''}
+                        </span>
+                      </div>
+                    )}
+                    {importPreview.tipo_google && (
+                      <div className="flex gap-2">
+                        <span className="text-gray-500 w-28">Categoria:</span>
+                        <span className="font-semibold text-[#0a2a5e]">{importPreview.tipo_google}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 <p className="text-xs text-gray-500">
-                  Os dados serão preenchidos automaticamente no formulário. Você pode editar antes de salvar.
+                  Vamos preencher o cadastro com esses dados. Revise tudo antes de salvar para garantir que a clínica correta foi selecionada.
                 </p>
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => { setImportPreview(null); setImportError(''); }}
+                    onClick={() => {
+                      setImportPreview(null);
+                      setImportError('');
+                    }}
                     className="flex-1 px-4 py-3 border-2 border-gray-300 text-[#0a2a5e] rounded-xl font-semibold hover:bg-gray-50 transition"
                   >
-                    Buscar Outro
+                    Voltar aos resultados
                   </button>
                   <button
                     onClick={confirmImport}
                     className="flex-1 px-4 py-3 bg-[#f5c842] text-[#0a2a5e] rounded-xl font-bold hover:bg-[#f0b820] transition"
                   >
-                    Confirmar e Editar
+                    Preencher cadastro
                   </button>
                 </div>
               </div>

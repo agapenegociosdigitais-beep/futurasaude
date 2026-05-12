@@ -95,12 +95,18 @@ CREATE TABLE IF NOT EXISTS public.clinicas (
   avaliacao FLOAT4 DEFAULT 0,
   total_agendamentos INTEGER NOT NULL DEFAULT 0,
   ativo BOOLEAN NOT NULL DEFAULT true,
+  google_place_id TEXT,
+  google_maps_url TEXT,
+  website TEXT,
+  latitude FLOAT8,
+  longitude FLOAT8,
   criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_clinicas_cidade ON public.clinicas(cidade);
 CREATE INDEX idx_clinicas_especialidade_id ON public.clinicas(especialidade_id);
 CREATE INDEX idx_clinicas_ativo ON public.clinicas(ativo);
+CREATE INDEX idx_clinicas_google_place_id ON public.clinicas(google_place_id);
 
 ALTER TABLE public.clinicas ENABLE ROW LEVEL SECURITY;
 

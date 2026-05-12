@@ -37,6 +37,11 @@ export async function GET(request: NextRequest) {
       total_agendamentos: c.total_agendamentos,
       ativo: c.ativo,
       criado_em: c.criado_em,
+      google_place_id: c.google_place_id,
+      google_maps_url: c.google_maps_url,
+      website: c.website,
+      latitude: c.latitude,
+      longitude: c.longitude,
     }));
 
     return NextResponse.json(mapped, { status: 200 });
@@ -89,6 +94,11 @@ export async function POST(request: NextRequest) {
       whatsapp: body.whatsapp?.trim() || null,
       horario: body.horario?.trim() || null,
       ativo: body.ativo !== undefined ? body.ativo : true,
+      google_place_id: body.google_place_id?.trim() || null,
+      google_maps_url: body.google_maps_url?.trim() || null,
+      website: body.website?.trim() || null,
+      latitude: typeof body.latitude === 'number' ? body.latitude : null,
+      longitude: typeof body.longitude === 'number' ? body.longitude : null,
     };
 
     const { data, error } = await supabaseAdmin

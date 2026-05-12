@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
       whatsapp: c.whatsapp,
       horario: c.horario,
       avaliacao: c.avaliacao,
+      google_maps_url: c.google_maps_url,
+      website: c.website,
     }));
 
     return NextResponse.json(mapped, { status: 200 });

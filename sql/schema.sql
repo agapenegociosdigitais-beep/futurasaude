@@ -81,6 +81,11 @@ CREATE TABLE IF NOT EXISTS clinicas (
   avaliacao FLOAT4 DEFAULT 0,
   total_agendamentos INTEGER NOT NULL DEFAULT 0,
   ativo BOOLEAN NOT NULL DEFAULT true,
+  google_place_id TEXT,
+  google_maps_url TEXT,
+  website TEXT,
+  latitude FLOAT8,
+  longitude FLOAT8,
   criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -267,6 +272,7 @@ CREATE INDEX IF NOT EXISTS idx_acessos_beneficiario_id ON acessos_dashboard(bene
 CREATE INDEX IF NOT EXISTS idx_acessos_acessado_em ON acessos_dashboard(acessado_em);
 CREATE INDEX IF NOT EXISTS idx_clinicas_cidade ON clinicas(cidade);
 CREATE INDEX IF NOT EXISTS idx_clinicas_especialidade_id ON clinicas(especialidade_id);
+CREATE INDEX IF NOT EXISTS idx_clinicas_google_place_id ON clinicas(google_place_id);
 
 -- ============================================
 -- 11. DADOS SEED — ESPECIALIDADES
@@ -277,7 +283,7 @@ VALUES
   ('Psicólogo', '🧠', 'desconto', 'Sessões com desconto especial para beneficiários', true, true),
   ('Oftalmologista', '👁️', 'desconto', 'Consultas e exame de vista com desconto', true, true),
   ('Fisioterapeuta', '💪', 'desconto', 'Sessões de fisioterapia com tarifa reduzida', true, true),
-  ('Nutricionista', '🥗', 'assessorament', 'Avaliação nutricional e plano personalizado', true, true),
+  ('Nutricionista', '🥗', 'desconto', 'Avaliação nutricional e plano personalizado', true, true),
   ('Cardiologista', '❤️', 'avaliacao', 'Consulta cardiovascular com avaliação gratuita', true, true),
   ('Pediatra', '👶', 'gratuito', 'Primeira consulta pediátrica gratuita', true, true),
   ('Farmácia', '💊', 'desconto', 'Medicamentos com desconto para beneficiários', true, true)

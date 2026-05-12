@@ -26,6 +26,11 @@ export async function PUT(
     if (body.whatsapp !== undefined) updateData.whatsapp = typeof body.whatsapp === 'string' && body.whatsapp.trim() ? body.whatsapp.trim() : null;
     if (body.horario !== undefined) updateData.horario = typeof body.horario === 'string' && body.horario.trim() ? body.horario.trim() : null;
     if (body.ativo !== undefined) updateData.ativo = body.ativo;
+    if (body.google_place_id !== undefined) updateData.google_place_id = typeof body.google_place_id === 'string' && body.google_place_id.trim() ? body.google_place_id.trim() : null;
+    if (body.google_maps_url !== undefined) updateData.google_maps_url = typeof body.google_maps_url === 'string' && body.google_maps_url.trim() ? body.google_maps_url.trim() : null;
+    if (body.website !== undefined) updateData.website = typeof body.website === 'string' && body.website.trim() ? body.website.trim() : null;
+    if (body.latitude !== undefined) updateData.latitude = typeof body.latitude === 'number' ? body.latitude : null;
+    if (body.longitude !== undefined) updateData.longitude = typeof body.longitude === 'number' ? body.longitude : null;
 
     const { data, error } = await supabaseAdmin
       .from('clinicas')
