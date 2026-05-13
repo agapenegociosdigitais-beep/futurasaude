@@ -26,6 +26,9 @@ export default function FinanceiroAdmin() {
   const [statusFiltro, setStatusFiltro] = useState('todos');
 
   const load = useCallback(async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     setLoading(true);
     setError('');
     try {
@@ -34,19 +37,35 @@ export default function FinanceiroAdmin() {
       if (dataFim) params.set('data_fim', dataFim);
       if (statusFiltro) params.set('status', statusFiltro);
 
-      const res = await fetch(`/api/admin/financeiro?${params.toString()}`);
+      const query = params.toString();
+      const res = await fetch(`/api/admin/financeiro${query ? `?${query}` : ''}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+
       if (res.ok) {
         const data = await res.json();
-        setPagamentos(data.pagamentos || []);
-        setTotal(data.total || 0);
-        setTotalPendente(data.totalPendente || 0);
+        setPagamentos(Array.isArray(data.pagamentos) ? data.pagamentos : []);
+        setTotal(Number(data.total) || 0);
+        setTotalPendente(Number(data.totalPendente) || 0);
       } else {
-        const err = await res.json();
-        setError(err.message || 'Erro ao carregar financeiro');
+        const err = await res.json().catch(() => null);
+        setPagamentos([]);
+        setTotal(0);
+        setTotalPendente(0);
+        setError(err?.message || 'Erro ao carregar financeiro');
       }
-    } catch {
-      setError('Erro de conexão ao carregar financeiro');
+    } catch (error) {
+      setPagamentos([]);
+      setTotal(0);
+      setTotalPendente(0);
+      if (error instanceof Error && error.name === 'AbortError') {
+        setError('A consulta do financeiro demorou demais. Tente reduzir os filtros ou recarregar a página.');
+      } else {
+        setError('Erro de conexão ao carregar financeiro');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [dataInicio, dataFim, statusFiltro]);

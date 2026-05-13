@@ -11,20 +11,27 @@ export async function GET(request: NextRequest) {
     const dataInicio = searchParams.get('data_inicio');
     const dataFim = searchParams.get('data_fim');
     const filtroCidade = searchParams.get('filtro_cidade');
-
     const statusFiltro = searchParams.get('status');
+    const limitParam = Number(searchParams.get('limit') || '200');
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 500)
+      : 200;
 
     let query = supabaseAdmin
       .from('pagamentos')
-      .select('*, beneficiarios(nome_completo, cidade)')
-      .order('created_at', { ascending: false });
+      .select('id, beneficiario_id, gateway_id, valor, status, metodo, pago_em, created_at, beneficiarios(nome_completo, cidade)')
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (statusFiltro && statusFiltro !== 'todos') {
       query = query.eq('status', statusFiltro);
     }
 
-    if (dataInicio) query = query.gte('pago_em', dataInicio);
-    if (dataFim) query = query.lte('pago_em', dataFim);
+    if (dataInicio || dataFim) {
+      const campoData = statusFiltro === 'pago' ? 'pago_em' : 'created_at';
+      if (dataInicio) query = query.gte(campoData, `${dataInicio}T00:00:00`);
+      if (dataFim) query = query.lte(campoData, `${dataFim}T23:59:59`);
+    }
 
     let { data, error } = await query;
 
@@ -33,19 +40,24 @@ export async function GET(request: NextRequest) {
     }
 
     if (filtroCidade && data) {
-      data = data.filter((p: any) => p.beneficiarios?.cidade === filtroCidade);
+      const cidadeFiltroNormalizada = filtroCidade.trim().toLowerCase();
+      data = data.filter((p: any) => p.beneficiarios?.cidade?.trim().toLowerCase() === cidadeFiltroNormalizada);
     }
 
-    const totalPago = data?.filter((p: any) => p.status === 'pago')
-      .reduce((sum: number, p: any) => sum + (parseFloat(p.valor) || 0), 0) || 0;
-    const totalPendente = data?.filter((p: any) => p.status === 'pendente')
-      .reduce((sum: number, p: any) => sum + (parseFloat(p.valor) || 0), 0) || 0;
+    const pagamentos = Array.isArray(data) ? data : [];
+    const totalPago = pagamentos
+      .filter((p: any) => p.status === 'pago')
+      .reduce((sum: number, p: any) => sum + (parseFloat(String(p.valor)) || 0), 0);
+    const totalPendente = pagamentos
+      .filter((p: any) => p.status === 'pendente')
+      .reduce((sum: number, p: any) => sum + (parseFloat(String(p.valor)) || 0), 0);
 
     return NextResponse.json(
-      { pagamentos: data, total: totalPago, totalPendente, quantidade: data?.length || 0 },
+      { pagamentos, total: totalPago, totalPendente, quantidade: pagamentos.length, limit },
       { status: 200 }
     );
   } catch (error) {
-    return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Erro interno do servidor';
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
