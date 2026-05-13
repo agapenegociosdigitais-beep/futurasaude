@@ -51,6 +51,10 @@ export default function FinanceiroAdmin() {
     }
   }, [dataInicio, dataFim, statusFiltro]);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
