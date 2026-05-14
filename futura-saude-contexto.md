@@ -1,6 +1,6 @@
 # Futura Saúde — Contexto Completo de Sessão
 
-**Data:** 2026-05-12  
+**Data:** 2026-05-14  
 **Projeto:** `C:/projects/futura-saude`  
 **Stack:** Next.js 14 (App Router) + Supabase + TailwindCSS + Vercel + Google Places API  
 **Deploy:** Vercel  
@@ -71,31 +71,32 @@ APENAS_SQL.sql            → schema alternativo/documental
 - **Dashboard clínicas:** migrado para API real
 - **Dashboard carteirinha:** migrado para API real
 
-### Sessão atual — diagnóstico de produção / financeiro
+### Sessão atual — financeiro estabilizado em produção
 - **Vercel em produção:** confirmado como **Ready**
-- **Deploy ativo analisado:** `futura-saude.vercel.app`
-- **Último deploy ativo confirmado:** `dpl_BSot3LT3KnsDdifya17n7xa7yCAp`
-- **Data do deploy inspecionado:** 2026-05-11 20:15:55 GMT-3
-- **Build local:** `npm run build` passando
-- **Diagnóstico do financeiro:** o problema aparente não é deploy quebrado, e sim provável gargalo/runtime na rota `/api/admin/financeiro`
-- **Achado principal do financeiro:** a rota carrega todos os pagamentos, faz processamento em memória e pode travar o spinner da UI
+- **Alias principal confirmado:** `https://futura-saude.vercel.app`
+- **Financeiro admin:** loading infinito corrigido
+- **Erro 400 do financeiro:** corrigido com ajuste de `created_at` → `criado_em`
+- **Paginação real implementada:** lista agora usa `page` + `page_size`
+- **Métricas separadas implementadas:** cards do financeiro deixaram de depender da página atual
+- **Deploy do financeiro com paginação/métricas:** `dpl_7UnRAegZgGf8YpBrHERiiE6jDQvM`
+- **Build local:** `npm run build` passando após as correções
 
 ### Sessão atual — nova estratégia de cadastro de clínicas
 Foi adotada a estratégia recomendada de **importação semi-automática via Google Places**, substituindo o fluxo antigo baseado em colar URL + scraping frágil.
 
 #### Novo fluxo implementado
 1. Admin abre `admin/clinicas`
-2. Clica em **Importar do Google**
+2. Clica em **Buscar no Google**
 3. Digita:
    - nome da clínica ou profissional
    - cidade
    - bairro opcional
    - especialidade
 4. Sistema faz **busca textual** no Google Places
-5. Admin escolhe o resultado correto
+5. Admin escolhe o resultado correto em **Usar este resultado**
 6. Sistema busca os **detalhes do local**
 7. Preview é exibido
-8. Admin clica em **Confirmar e Editar**
+8. Admin clica em **Preencher cadastro**
 9. Formulário principal é pré-preenchido
 10. Admin revisa e salva manualmente
 
@@ -104,9 +105,12 @@ Foi adotada a estratégia recomendada de **importação semi-automática via Goo
 - Integração com:
   - **Text Search** do Google Places
   - **Place Details** do Google Places
+  - **Place Photos (New)** para preview opcional de imagem pública do Google
 - Novo contrato no endpoint `app/api/admin/clinicas/import-google/route.ts`:
   - `mode: "search"`
   - `mode: "details"`
+- Novo proxy admin para foto pública do Google:
+  - `app/api/admin/clinicas/google-photo/route.ts`
 - Persistência de metadados do Google no cadastro da clínica
 
 #### Novos campos adicionados ao modelo de clínicas
@@ -129,12 +133,14 @@ Foi adotada a estratégia recomendada de **importação semi-automática via Goo
   - lista candidatos
   - permite abrir o Maps antes de escolher
   - mostra preview antes de preencher o formulário
+  - exibe foto pública do Google como preview opcional quando disponível
 - O formulário principal agora também comporta:
   - `website`
   - `google_maps_url`
   - `google_place_id`
   - `latitude`
   - `longitude`
+- A foto do Google não é persistida automaticamente em `foto_url`; ela serve como preview transitório antes do upload manual/decisão do admin
 
 #### Arquivos de schema / migração atualizados
 - `APENAS_SQL.sql`
@@ -148,28 +154,30 @@ Em `.env.local.example` foi adicionada:
 #### Build após a mudança
 - `npm run build` **passou com sucesso** após a implementação do fluxo Google Places
 
+#### Publicação e refinamento final
+- `app/admin/clinicas/page.tsx` recebeu refinamento final de microcopy/UX no fluxo de importação
+- Commit publicado em `main`: `e4e9bb6` — `feat: add Google Places clinic import flow`
+- Deploy de produção confirmado no Vercel como **Ready**
+- Alias principal online: `https://futura-saude.vercel.app`
+
 ---
 
 ## 🔄 O que ainda precisa ser feito
 
 ### Alta prioridade
-- [ ] **Aplicar a migration no Supabase**
-  - Arquivo: `supabase/migrations/202605120001_add_google_fields_to_clinicas.sql`
-- [ ] **Configurar a variável de ambiente no Vercel e/ou ambiente local**
-  - `GOOGLE_PLACES_API_KEY`
-- [ ] **Testar o fluxo completo no admin `/admin/clinicas`**
+- [ ] **Testar o fluxo completo no admin `/admin/clinicas` com foto opcional do Google**
   - buscar clínica
   - selecionar resultado
+  - validar preview com e sem foto
   - confirmar preview
   - salvar
   - validar persistência no banco
-- [ ] **`app/dashboard/agendamentos/page.tsx`** — continua hardcoded e ainda é a próxima grande pendência funcional
+- [ ] **Executar smoke test do dashboard/agendamentos com dados reais**
+  - validar carregamento
+  - validar cancelamento
+  - validar estados vazios/erro
 
 ### Média prioridade
-- [ ] **Melhorar `/api/admin/financeiro`**
-  - paginação / limite
-  - menos processamento em memória
-  - melhorar performance real do painel financeiro
 - [ ] **Botões da carteirinha** (Download PDF, Compartilhar, Modo Offline) — ainda placeholders
 - [ ] **Teste E2E do fluxo principal**
   - cadastro → pagamento → login → dashboard → carteirinha → clínicas
@@ -202,7 +210,7 @@ Em `.env.local.example` foi adicionada:
 |--------|------|
 | id | uuid |
 | nome_clinica | text |
-| nome_profissional | text |
+| nome_profissional | text \| null |
 | especialidade_id | uuid (FK → especialidades) |
 | registro_profissional | text |
 | foto_url | text \| null |
@@ -257,10 +265,13 @@ Em `.env.local.example` foi adicionada:
 
 ## 🌐 Integração Google Places
 
-### Chave necessária
+### Chave configurada
 ```env
 GOOGLE_PLACES_API_KEY=sua_chave_aqui
 ```
+
+- Variável configurada no Vercel em Production/Preview
+- Places API (New) ativada no Google Cloud
 
 ### Fluxo técnico
 - Busca textual: `searchGooglePlaces()`
@@ -272,6 +283,8 @@ GOOGLE_PLACES_API_KEY=sua_chave_aqui
 - O admin sempre revisa no formulário antes de salvar
 - `serviços ofertados` ainda **não** são importados automaticamente
 - O campo `especialidade_id` continua manual/obrigatório
+- `nome_profissional` é opcional
+- Foto pública do Google é usada apenas como preview opcional, não como imagem definitiva automática
 
 ---
 
@@ -314,7 +327,7 @@ CREATE INDEX IF NOT EXISTS idx_clinicas_google_place_id
 |---------|--------|
 | `app/dashboard/clinicas/page.tsx` | ✅ Migrado para API real |
 | `app/dashboard/carteirinha/page.tsx` | ✅ Migrado para API real |
-| `app/dashboard/agendamentos/page.tsx` | ❌ Ainda hardcoded |
+| `app/dashboard/agendamentos/page.tsx` | ✅ Ligado à API real e refinado com ordenação/estados reais |
 | `app/api/beneficiario/clinicas/route.ts` | ✅ Join com especialidades + agora expõe `google_maps_url` e `website` |
 | `app/admin/clinicas/page.tsx` | ✅ Refatorado para busca Google Places |
 | `app/api/admin/clinicas/import-google/route.ts` | ✅ Refeito para `search` + `details` |
@@ -330,15 +343,19 @@ CREATE INDEX IF NOT EXISTS idx_clinicas_google_place_id
 
 ## 📌 Situação atual resumida
 - Produção Vercel está **Ready**
+- Alias principal `https://futura-saude.vercel.app` está apontando para o deploy atual
 - Build local está **passando**
-- Fluxo novo de clínicas via Google Places está **implementado no código**
+- Fluxo novo de clínicas via Google Places está **implementado no código** e **publicado em produção**
+- Google Places está configurado no Vercel e operacional
+- Preview opcional de foto pública do Google foi integrado ao fluxo de clínicas
+- `nome_profissional` agora é opcional no banco de produção
+- Financeiro admin foi corrigido, paginado e publicado
+- Dashboard/agendamentos já usa API real e foi refinado
 - Ainda falta:
-  - aplicar migration
-  - configurar chave no ambiente
-  - validar no admin real
-  - resolver painel financeiro lento
-  - migrar agendamentos hardcoded
+  - validar smoke test final do fluxo de clínicas com foto opcional
+  - validar smoke test do dashboard/agendamentos
+  - evoluções futuras da carteirinha e fluxo E2E
 
 ---
 
-*Atualizado em 2026-05-12 para transferência de contexto entre sessões e continuidade operacional do projeto.*
+*Atualizado em 2026-05-14 com financeiro estabilizado/publicado, Google Places operacional, preview opcional de foto do Google, nome_profissional opcional no banco e refinamento do dashboard de agendamentos.*

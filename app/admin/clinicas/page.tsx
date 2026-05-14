@@ -71,6 +71,9 @@ interface GooglePreview {
   website: string | null;
   google_maps_url: string;
   foto_url: string | null;
+  google_photo_name: string | null;
+  google_photo_author_name: string | null;
+  google_photo_author_uri: string | null;
   horario: string | null;
   avaliacao: number | null;
   total_avaliacoes: number | null;
@@ -359,7 +362,7 @@ export default function ClinicasAdmin() {
       nome_profissional: '',
       especialidade_id: importEspId,
       registro_profissional: '',
-      foto_url: importPreview.foto_url || '',
+      foto_url: '',
       endereco: importPreview.endereco || '',
       bairro: importPreview.bairro || '',
       cidade: importPreview.cidade || '',
@@ -1027,6 +1030,37 @@ export default function ClinicasAdmin() {
                       <div className="flex gap-2">
                         <span className="text-gray-500 w-28">Nome:</span>
                         <span className="font-semibold text-[#0a2a5e]">{importPreview.nome}</span>
+                      </div>
+                    )}
+                    {importPreview.foto_url && (
+                      <div className="rounded-xl overflow-hidden border border-green-200 bg-white max-w-sm mb-3">
+                        <img
+                          src={importPreview.foto_url}
+                          alt={`Foto pública de ${importPreview.nome}`}
+                          className="w-full h-48 object-cover"
+                        />
+                        <div className="p-3 space-y-1">
+                          <p className="text-xs text-gray-500">
+                            Foto pública do Google usada apenas como preview opcional. A imagem definitiva continua sendo escolhida manualmente no cadastro.
+                          </p>
+                          {importPreview.google_photo_author_name && (
+                            <p className="text-xs text-gray-500">
+                              Crédito:{' '}
+                              {importPreview.google_photo_author_uri ? (
+                                <a
+                                  href={importPreview.google_photo_author_uri}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[#0a2a5e] hover:underline"
+                                >
+                                  {importPreview.google_photo_author_name}
+                                </a>
+                              ) : (
+                                <span>{importPreview.google_photo_author_name}</span>
+                              )}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     )}
                     {importPreview.telefone && (

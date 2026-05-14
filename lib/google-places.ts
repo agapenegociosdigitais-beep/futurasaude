@@ -18,6 +18,19 @@ interface PlacesAddressComponent {
   types?: string[];
 }
 
+interface PlacesPhotoAttribution {
+  displayName?: string;
+  uri?: string;
+  photoUri?: string;
+}
+
+interface PlacesPhoto {
+  name?: string;
+  widthPx?: number;
+  heightPx?: number;
+  authorAttributions?: PlacesPhotoAttribution[];
+}
+
 interface PlaceDetailsResponse {
   id?: string;
   displayName?: { text?: string };
@@ -33,6 +46,7 @@ interface PlaceDetailsResponse {
   location?: { latitude?: number; longitude?: number };
   primaryType?: string;
   businessStatus?: string;
+  photos?: PlacesPhoto[];
 }
 
 export interface GooglePlaceCandidate {
@@ -59,6 +73,9 @@ export interface GooglePlacePreview {
   website: string | null;
   google_maps_url: string;
   foto_url: string | null;
+  google_photo_name: string | null;
+  google_photo_author_name: string | null;
+  google_photo_author_uri: string | null;
   horario: string | null;
   avaliacao: number | null;
   total_avaliacoes: number | null;
@@ -154,6 +171,9 @@ function normalizeDetails(details: PlaceDetailsResponse): GooglePlacePreview {
   const cidade = getComponent(details.addressComponents, 'locality', 'administrative_area_level_2');
   const estado = getComponent(details.addressComponents, 'administrative_area_level_1');
   const endereco = buildStreetAddress(details.addressComponents) || details.formattedAddress?.trim() || null;
+  const firstPhoto = details.photos?.find((photo) => photo.name?.trim());
+  const firstAttribution = firstPhoto?.authorAttributions?.[0];
+  const photoName = firstPhoto?.name?.trim() || null;
 
   return {
     google_place_id: details.id || '',
@@ -165,7 +185,12 @@ function normalizeDetails(details: PlaceDetailsResponse): GooglePlacePreview {
     estado,
     website: details.websiteUri?.trim() || null,
     google_maps_url: toMapsUrl(details.id, details.googleMapsUri),
-    foto_url: null,
+    foto_url: photoName
+      ? `/api/admin/clinicas/google-photo?name=${encodeURIComponent(photoName)}`
+      : null,
+    google_photo_name: photoName,
+    google_photo_author_name: firstAttribution?.displayName?.trim() || null,
+    google_photo_author_uri: firstAttribution?.uri?.trim() || null,
     horario: formatOpeningHours(details),
     avaliacao: toNumber(details.rating),
     total_avaliacoes:
@@ -245,6 +270,7 @@ export async function getGooglePlaceDetails(placeId: string) {
         'location',
         'primaryType',
         'businessStatus',
+        'photos',
       ].join(','),
     },
     cache: 'no-store',
