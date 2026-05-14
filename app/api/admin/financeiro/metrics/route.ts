@@ -33,53 +33,39 @@ export async function GET(request: NextRequest) {
     const dataInicio = searchParams.get('data_inicio');
     const dataFim = searchParams.get('data_fim');
     const statusFiltro = searchParams.get('status') || 'todos';
-    const pageParam = Number(searchParams.get('page') || '1');
-    const pageSizeParam = Number(searchParams.get('page_size') || '10');
-
-    const page = Number.isFinite(pageParam) ? Math.max(pageParam, 1) : 1;
-    const pageSize = Number.isFinite(pageSizeParam)
-      ? Math.min(Math.max(pageSizeParam, 1), 100)
-      : 10;
 
     const filters: FinanceiroFilters = { statusFiltro, dataInicio, dataFim };
 
-    const countQuery = aplicarFiltros(
+    const { data, error } = await aplicarFiltros(
       supabaseAdmin
         .from('pagamentos')
-        .select('*', { count: 'exact', head: true }),
+        .select('valor, status'),
       filters
     );
 
-    const [{ count: totalItems, error: countError }, { data, error }] = await Promise.all([
-      countQuery,
-      aplicarFiltros(
-        supabaseAdmin
-          .from('pagamentos')
-          .select('id, beneficiario_id, gateway_id, valor, status, metodo, pago_em, criado_em, beneficiarios(nome_completo, cidade)')
-          .order('criado_em', { ascending: false })
-          .range((page - 1) * pageSize, page * pageSize - 1),
-        filters
-      ),
-    ]);
-
-    if (countError || error) {
-      return NextResponse.json({ message: 'Erro ao buscar pagamentos' }, { status: 400 });
+    if (error) {
+      return NextResponse.json({ message: 'Erro ao buscar métricas do financeiro' }, { status: 400 });
     }
 
     const pagamentos = Array.isArray(data) ? data : [];
-    const total = totalItems || 0;
-    const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
+    const quantidadeTotal = pagamentos.length;
+    const quantidadePago = pagamentos.filter((p: any) => p.status === 'pago').length;
+    const quantidadePendente = pagamentos.filter((p: any) => p.status === 'pendente').length;
+    const totalPago = pagamentos
+      .filter((p: any) => p.status === 'pago')
+      .reduce((sum: number, p: any) => sum + (parseFloat(String(p.valor)) || 0), 0);
+    const totalPendente = pagamentos
+      .filter((p: any) => p.status === 'pendente')
+      .reduce((sum: number, p: any) => sum + (parseFloat(String(p.valor)) || 0), 0);
 
     return NextResponse.json(
       {
-        pagamentos,
-        pagination: {
-          page,
-          pageSize,
-          totalItems: total,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
+        cards: {
+          totalPago,
+          totalPendente,
+          quantidadeTotal,
+          quantidadePago,
+          quantidadePendente,
         },
       },
       { status: 200 }
