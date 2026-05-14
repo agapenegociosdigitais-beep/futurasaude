@@ -69,7 +69,7 @@ CREATE POLICY "especialidades_escrita_admin" ON especialidades
 CREATE TABLE IF NOT EXISTS clinicas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   especialidade_id UUID NOT NULL REFERENCES especialidades(id) ON DELETE CASCADE,
-  nome_profissional TEXT NOT NULL,
+  nome_profissional TEXT,
   nome_clinica TEXT NOT NULL,
   registro_profissional TEXT,
   foto_url TEXT,

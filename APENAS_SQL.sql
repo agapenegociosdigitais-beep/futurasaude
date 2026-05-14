@@ -83,7 +83,7 @@ CREATE POLICY "especialidades_delete_admin" ON public.especialidades
 CREATE TABLE IF NOT EXISTS public.clinicas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   especialidade_id UUID NOT NULL REFERENCES public.especialidades(id) ON DELETE CASCADE,
-  nome_profissional TEXT NOT NULL,
+  nome_profissional TEXT,
   nome_clinica TEXT NOT NULL,
   registro_profissional TEXT,
   foto_url TEXT,
