@@ -63,9 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!clean.icone_emoji || !String(clean.icone_emoji).trim()) {
-      clean.icone_emoji = '🏥';
-    }
+    clean.icone_emoji = clean.icone_emoji ? String(clean.icone_emoji).trim() : '';
 
     if (!clean.tipo_beneficio || !TIPOS_VALIDOS.includes(String(clean.tipo_beneficio))) {
       clean.tipo_beneficio = 'desconto';

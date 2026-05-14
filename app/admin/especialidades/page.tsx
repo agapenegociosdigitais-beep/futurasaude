@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Smile } from 'lucide-react';
 
 interface Especialidade {
   id: string;
@@ -21,6 +21,11 @@ const TIPOS = [
   { value: 'avaliacao', label: 'Avaliação' },
 ] as const;
 
+const EMOJIS_DISPONIVEIS = [
+  '🦷', '👁️', '❤️', '🧠', '🦴', '👂', '🫁', '🩺', '💪', '🧬',
+  '🧘', '🍼', '🤰', '🧑‍⚕️', '🏥', '💊', '🧪', '🩻', '🦶', '🦻',
+];
+
 export default function EspecialidadesAdmin() {
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,9 +34,10 @@ export default function EspecialidadesAdmin() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [form, setForm] = useState({
     nome: '',
-    icone_emoji: '🏥',
+    icone_emoji: '',
     tipo_beneficio: 'desconto' as 'gratuito' | 'desconto' | 'avaliacao',
     descricao_beneficio: 'Benefício exclusivo Futura Saúde',
     visivel_beneficiario: true,
@@ -62,13 +68,14 @@ export default function EspecialidadesAdmin() {
     setEditing(null);
     setForm({
       nome: '',
-      icone_emoji: '🏥',
+      icone_emoji: '',
       tipo_beneficio: 'desconto',
       descricao_beneficio: 'Benefício exclusivo Futura Saúde',
       visivel_beneficiario: true,
       ativo: true,
     });
     setError('');
+    setShowEmojiPicker(false);
     setShowModal(true);
   };
 
@@ -76,13 +83,14 @@ export default function EspecialidadesAdmin() {
     setEditing(esp);
     setForm({
       nome: esp.nome,
-      icone_emoji: esp.icone_emoji || '🏥',
+      icone_emoji: esp.icone_emoji || '',
       tipo_beneficio: esp.tipo_beneficio || 'desconto',
       descricao_beneficio: esp.descricao_beneficio || 'Benefício exclusivo Futura Saúde',
       visivel_beneficiario: esp.visivel_beneficiario ?? true,
       ativo: esp.ativo ?? true,
     });
     setError('');
+    setShowEmojiPicker(false);
     setShowModal(true);
   };
 
@@ -266,15 +274,68 @@ export default function EspecialidadesAdmin() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Ícone (emoji)
                 </label>
-                <input
-                  type="text"
-                  value={form.icone_emoji}
-                  onChange={(e) => setForm({ ...form, icone_emoji: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none text-2xl"
-                />
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker((prev) => !prev)}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#f5c842] focus:outline-none text-left flex items-center justify-between hover:border-[#f5c842] transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-2xl">
+                      {form.icone_emoji || '—'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#0a2a5e]">
+                        {form.icone_emoji ? 'Emoji selecionado' : 'Sem emoji'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Clique para escolher um emoji ou usar sem ícone.
+                      </p>
+                    </div>
+                  </div>
+                  <Smile className="w-5 h-5 text-gray-400" />
+                </button>
+
+                {showEmojiPicker && (
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...form, icone_emoji: '' });
+                        setShowEmojiPicker(false);
+                      }}
+                      className={`w-full px-4 py-3 rounded-lg border text-left transition ${
+                        !form.icone_emoji
+                          ? 'border-[#f5c842] bg-white text-[#0a2a5e]'
+                          : 'border-gray-200 bg-white hover:border-[#f5c842]'
+                      }`}
+                    >
+                      <span className="font-semibold">Sem emoji</span>
+                      <p className="text-xs text-gray-500 mt-1">Salvar a especialidade sem ícone.</p>
+                    </button>
+                    <div className="grid grid-cols-5 gap-2">
+                      {EMOJIS_DISPONIVEIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => {
+                            setForm({ ...form, icone_emoji: emoji });
+                            setShowEmojiPicker(false);
+                          }}
+                          className={`h-14 rounded-xl border text-2xl flex items-center justify-center transition ${
+                            form.icone_emoji === emoji
+                              ? 'border-[#f5c842] bg-white shadow-sm'
+                              : 'border-gray-200 bg-white hover:border-[#f5c842]'
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

@@ -52,6 +52,10 @@ export async function PUT(
       clean.nome = trimmed;
     }
 
+    if (clean.icone_emoji !== undefined) {
+      clean.icone_emoji = clean.icone_emoji ? String(clean.icone_emoji).trim() : '';
+    }
+
     if (
       clean.tipo_beneficio !== undefined &&
       !TIPOS_VALIDOS.includes(String(clean.tipo_beneficio))
