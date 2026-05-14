@@ -11,7 +11,8 @@ interface Pagamento {
   status: string;
   metodo: string;
   pago_em: string;
-  created_at: string;
+  created_at?: string;
+  criado_em?: string;
   beneficiarios?: { nome_completo: string; cidade: string };
 }
 
@@ -208,7 +209,11 @@ export default function FinanceiroAdmin() {
                     <td className="px-6 py-4 text-gray-700 text-sm">
                       {p.pago_em
                         ? new Date(p.pago_em).toLocaleDateString('pt-BR')
-                        : new Date(p.created_at).toLocaleDateString('pt-BR')}
+                        : p.criado_em
+                          ? new Date(p.criado_em).toLocaleDateString('pt-BR')
+                          : p.created_at
+                            ? new Date(p.created_at).toLocaleDateString('pt-BR')
+                            : '—'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${

@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
 
     let query = supabaseAdmin
       .from('pagamentos')
-      .select('id, beneficiario_id, gateway_id, valor, status, metodo, pago_em, created_at, beneficiarios(nome_completo, cidade)')
-      .order('created_at', { ascending: false })
+      .select('id, beneficiario_id, gateway_id, valor, status, metodo, pago_em, criado_em, beneficiarios(nome_completo, cidade)')
+      .order('criado_em', { ascending: false })
       .limit(limit);
 
     if (statusFiltro && statusFiltro !== 'todos') {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (dataInicio || dataFim) {
-      const campoData = statusFiltro === 'pago' ? 'pago_em' : 'created_at';
+      const campoData = statusFiltro === 'pago' ? 'pago_em' : 'criado_em';
       if (dataInicio) query = query.gte(campoData, `${dataInicio}T00:00:00`);
       if (dataFim) query = query.lte(campoData, `${dataFim}T23:59:59`);
     }
