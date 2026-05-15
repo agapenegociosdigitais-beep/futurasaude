@@ -265,6 +265,62 @@ CREATE INDEX IF NOT EXISTS idx_beneficiarios_cpf ON beneficiarios(cpf);
 CREATE INDEX IF NOT EXISTS idx_pagamentos_beneficiario_id ON pagamentos(beneficiario_id);
 CREATE INDEX IF NOT EXISTS idx_pagamentos_status ON pagamentos(status);
 CREATE INDEX IF NOT EXISTS idx_pagamentos_gateway_id ON pagamentos(gateway_id);
+CREATE SEQUENCE IF NOT EXISTS autorizacoes_seq START 1;
+
+CREATE TABLE IF NOT EXISTS autorizacoes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  protocolo TEXT NOT NULL UNIQUE DEFAULT 'AUT-' || to_char(CURRENT_DATE, 'YYYY') || '-' || LPAD((nextval('autorizacoes_seq')::text), 6, '0'),
+  beneficiario_id UUID NOT NULL REFERENCES beneficiarios(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL CHECK (tipo IN ('consulta', 'exame', 'procedimento')),
+  especialidade_ou_exame TEXT NOT NULL,
+  justificativa TEXT,
+  status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'aprovada', 'negada', 'utilizada', 'expirada', 'cancelada')),
+  motivo_negativa TEXT,
+  emitida_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+  valida_ate TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE autorizacoes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "autorizacoes_beneficiario_le_proprias" ON autorizacoes
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM beneficiarios b
+      WHERE b.id = autorizacoes.beneficiario_id
+        AND b.responsavel_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "autorizacoes_beneficiario_cria_proprias" ON autorizacoes
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM beneficiarios b
+      WHERE b.id = autorizacoes.beneficiario_id
+        AND b.responsavel_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "autorizacoes_admin_le_todas" ON autorizacoes
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM perfis p
+      WHERE p.id = auth.uid()
+        AND p.tipo = 'admin'
+    )
+  );
+
+CREATE POLICY "autorizacoes_admin_atualiza_todas" ON autorizacoes
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM perfis p
+      WHERE p.id = auth.uid()
+        AND p.tipo = 'admin'
+    )
+  );
+
+CREATE INDEX IF NOT EXISTS idx_autorizacoes_beneficiario_id ON autorizacoes(beneficiario_id);
+CREATE INDEX IF NOT EXISTS idx_autorizacoes_status ON autorizacoes(status);
 CREATE INDEX IF NOT EXISTS idx_agendamentos_beneficiario_id ON agendamentos(beneficiario_id);
 CREATE INDEX IF NOT EXISTS idx_agendamentos_clinica_id ON agendamentos(clinica_id);
 CREATE INDEX IF NOT EXISTS idx_agendamentos_status ON agendamentos(status);

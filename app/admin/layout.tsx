@@ -12,6 +12,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/admin/financeiro': { title: 'Financeiro', subtitle: 'Relatórios e transações' },
   '/admin/sorteio': { title: 'Sorteio', subtitle: 'Sistema de sorteios' },
   '/admin/especialidades': { title: 'Especialidades', subtitle: 'Gerenciar especialidades' },
+  '/admin/autorizacoes': { title: 'Autorizações', subtitle: 'Gerenciar autorizações e encaminhamentos' },
   '/admin/configuracoes': { title: 'Configurações', subtitle: 'Configurações do sistema' },
 };
 

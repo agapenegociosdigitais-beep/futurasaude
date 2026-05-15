@@ -412,6 +412,9 @@ export default function DashboardPage() {
           <button className="nav-item" onClick={() => router.push('/dashboard/agendamentos')}>
             <span>📅</span> Agendamentos
           </button>
+          <button className="nav-item" onClick={() => router.push('/autorizacoes')}>
+            <span>📄</span> Autorizações
+          </button>
           <div className="nav-section">Conta</div>
           <button className="nav-item" onClick={() => router.push('/dashboard/configuracoes')}>
             <span>👤</span> Meu Perfil

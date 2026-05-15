@@ -11,6 +11,7 @@ import {
   Stethoscope,
   Settings,
   LogOut,
+  FileCheck,
   X,
 } from 'lucide-react';
 
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { id: 'financeiro', label: 'Financeiro', icon: DollarSign, href: '/admin/financeiro' },
   { id: 'sorteio', label: 'Sorteio', icon: Trophy, href: '/admin/sorteio' },
   { id: 'especialidades', label: 'Especialidades', icon: Stethoscope, href: '/admin/especialidades' },
+  { id: 'autorizacoes', label: 'Autorizações', icon: FileCheck, href: '/admin/autorizacoes' },
   { id: 'configuracoes', label: 'Configurações', icon: Settings, href: '/admin/configuracoes' },
 ];
 
