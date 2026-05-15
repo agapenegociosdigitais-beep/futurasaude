@@ -1,7 +1,16 @@
+'use client';
+
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
+
+type Autorizacao = {
+  id: string;
+  protocolo: string;
+  tipo: string;
+  especialidade_ou_exame: string;
+  status: string;
+  valida_ate: string | null;
+};
 
 function badgeClass(status: string) {
   if (status === 'aprovada') return 'bg-green-100 text-green-700';
@@ -18,27 +27,42 @@ function formatDate(value: string | null) {
   return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString('pt-BR');
 }
 
-export default async function AutorizacoesPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+function getAuthHeaders() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
-  if (!user) redirect('/login');
+export default function AutorizacoesPage() {
+  const [autorizacoes, setAutorizacoes] = useState<Autorizacao[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const { data: beneficiario } = await supabaseAdmin
-    .from('beneficiarios')
-    .select('id')
-    .eq('responsavel_id', user.id)
-    .maybeSingle();
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        setError('');
+        const res = await fetch('/api/autorizacoes', {
+          headers: getAuthHeaders(),
+          cache: 'no-store',
+        });
+        const data = await res.json().catch(() => []);
 
-  const { data: autorizacoes } = beneficiario
-    ? await supabaseAdmin
-        .from('autorizacoes')
-        .select('*')
-        .eq('beneficiario_id', beneficiario.id)
-        .order('created_at', { ascending: false })
-    : { data: [] as any[] };
+        if (!res.ok) {
+          setError(data.message || 'Erro ao carregar autorizações');
+          return;
+        }
+
+        setAutorizacoes(Array.isArray(data) ? data : []);
+      } catch {
+        setError('Erro de conexão ao carregar autorizações');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -56,13 +80,23 @@ export default async function AutorizacoesPage() {
           </Link>
         </div>
 
-        {!autorizacoes?.length ? (
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500">
+            Carregando autorizações...
+          </div>
+        ) : autorizacoes.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500">
             Nenhuma autorização encontrada.
           </div>
         ) : (
           <div className="space-y-4">
-            {autorizacoes.map((autorizacao: any) => (
+            {autorizacoes.map((autorizacao) => (
               <Link
                 key={autorizacao.id}
                 href={`/autorizacoes/${autorizacao.id}`}

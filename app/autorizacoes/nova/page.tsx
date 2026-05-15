@@ -9,6 +9,14 @@ const TIPOS = [
   { value: 'procedimento', label: 'Procedimento' },
 ];
 
+function getAuthHeaders() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null;
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export default function NovaAutorizacaoPage() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -31,7 +39,7 @@ export default function NovaAutorizacaoPage() {
     try {
       const res = await fetch('/api/autorizacoes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(form),
       });
 
