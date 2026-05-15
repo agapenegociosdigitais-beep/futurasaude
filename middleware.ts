@@ -78,7 +78,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
+  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname.startsWith('/autorizacoes');
 
   if (!isProtected) {
     return NextResponse.next();
