@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -36,12 +37,13 @@ export default function LoginPage() {
         return;
       }
 
-      // Salvar token no localStorage para o dashboard verificar
-            if (data.access_token) {
-                      localStorage.setItem('sb-access-token', data.access_token);
-                      localStorage.setItem('sb-refresh-token', data.refresh_token || '');
-            }
-      router.push('/dashboard');
+      if (data.access_token) {
+        localStorage.setItem('sb-access-token', data.access_token);
+        localStorage.setItem('sb-refresh-token', data.refresh_token || '');
+      }
+
+      const redirectTo = searchParams.get('redirect');
+      router.push(redirectTo || '/dashboard');
     } catch {
       setError('Erro ao conectar ao servidor');
     } finally {
@@ -161,5 +163,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }
